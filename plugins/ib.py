@@ -6,6 +6,7 @@ import config
 import uuid, json
 from event import TRIGGER
 
+
 listener = [
 ]
 name = "BackupPlugin"
