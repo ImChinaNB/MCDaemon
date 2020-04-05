@@ -144,3 +144,5 @@ static
 
 # vscode stuff
 .vscode/
+
+config/

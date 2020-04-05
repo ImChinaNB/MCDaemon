@@ -18,6 +18,13 @@ def loadConfig(filename, default = {}):
       return json.load(f)
   except:
     return default
+def loadText(filename, default = ""):
+  if not vaildname(filename): return False
+  try:
+    with open("config/" + filename + ".txt", "r", encoding='utf-8') as f:
+      return f.read()
+  except:
+    return default
 def saveConfig(filename, content):
   if not vaildname(filename): return False
   try:

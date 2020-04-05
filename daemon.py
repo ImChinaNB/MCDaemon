@@ -26,7 +26,7 @@ def getInput(server, event):
 
 print("[Daemon/Info] 启动中...")
 ## read config
-cfg = config.loadConfig("daemon", {"cwd": "server", "command": "java -server -jar server.jar", "acwd": "/home/mc/new", "aswd": "/home/mc/new/server"})
+cfg = config.loadConfig("daemon", {"cwd": "server", "command": "java -server -jar server.jar", "aswd": "/home/mc/new/server"})
 
 print("[Daemon/Info] 配置文件加载完毕！")
 
