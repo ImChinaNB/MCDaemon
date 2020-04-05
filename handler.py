@@ -13,6 +13,7 @@ from textapi import CC
 class Handler:
   def __init__(self, server, event):
     self.server = server
+    self.stopped = False
     self.event = event
   def _getInfo(self, line):
     r = {"h": line[1:3], "m": line[4:6], "s": line[7:9], "source": "", "sender": "", "content": ""}
@@ -33,9 +34,14 @@ class Handler:
     return r
   def tick(self):
     # Run a tick, means get output from the server and deal with it.
-    if self.server.stopped():
+    if self.server.stopped() and not self.stopped:
+      self.stopped = True
       self.event.trigger(TRIGGER.SERVER_STOPPED, {})
-      return self.server.recv()
+      return self.server.recv().strip("\n")
+    if not self.server.stopped() and self.stopped:
+      self.stopped = False
+      self.event.trigger(TRIGGER.SERVER_STARTING, {})
+      return self.server.recv().strip("\n")
     r = self.server.recv() # get the output
     for line in r.splitlines():
       t = self._getInfo(line)
@@ -59,17 +65,17 @@ class Handler:
         test = re.match(r'Player ([a-zA-Z_-]+) \(UUID: .*?\) used command: (.*)$', t["content"])
         t["content"] = test.group(2)
         t["sender"] = test.group(1)
-        if t["sender"].lower() not in server.playerlist_lower and offline_login:
+        if t["sender"].lower() not in self.server.playerlist_lower and self.server.offline_login:
           self.server.debug(CC("玩家试图在未登录状态下执行指令 ", "8"), CC(t["sender"], "6l"))
           self.event.trigger(TRIGGER.PLAYER_COMMAND_ALL, t)
           continue # pass the event
         self.event.trigger(TRIGGER.PLAYER_COMMAND, t)
       elif t["sender"] != False:
-        if t["sender"].lower() not in server.playerlist_lower and offline_login:
+        if t["sender"].lower() not in self.server.playerlist_lower and self.server.offline_login:
           self.server.debug(CC("玩家试图在未登录状态下说话 ", "8"), CC(t["sender"], "6l"))
           self.event.trigger(TRIGGER.PLAYER_INFO_ALL, t)
           continue # pass the event
         self.event.trigger(TRIGGER.PLAYER_INFO, t)
       else:
         self.event.trigger(TRIGGER.SERVER_INFO, t)
-    return r
+    return r.strip("\n")

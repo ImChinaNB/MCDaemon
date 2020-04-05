@@ -198,9 +198,9 @@ def onServerInfo(info, server, plugin):
     elif cmdlen == 3 and command[0] == 'scoreboard':
         buildScoreboard(server, command[1], command[2], listBot)
     elif cmdlen == 2 and command[0] == 'scoreboard' and command[1] == 'show':
-        showScoreboard(server, info)
+        showScoreboard(server)
     elif cmdlen == 2 and command[0] == 'scoreboard' and command[1] == 'hide':
-        hideScoreboard(server, info)
+        hideScoreboard(server)
     elif cmdlen == 1 and command[0] == 'refreshUUID':
         refreshUUIDList(server, True)
     else:

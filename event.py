@@ -20,12 +20,13 @@ class TRIGGER(Enum): # triggers enumerations
   SERVER_INFO = 5
   PLAYER_INFO = 6
   PLUGIN_LOADED = 7
-  PLAYER_JOIN = 8
-  PLAYER_LEAVE = 9
-  CONSOLE_INFO = 10
-  PLAYER_COMMAND = 11
-  PLAYER_COMMAND_ALL = 12
-  PLAYER_INFO_ALL = 13
+  PLUGIN_UNLOADING = 8
+  PLAYER_JOIN = 9
+  PLAYER_LEAVE = 10
+  CONSOLE_INFO = 11
+  PLAYER_COMMAND = 12
+  PLAYER_COMMAND_ALL = 13
+  PLAYER_INFO_ALL = 14
 
 class Event:
   def __init__(self):
@@ -51,7 +52,7 @@ class Event:
     else:
       for i in range(0, count):
         self.fs[i].clear()
-  def trigger(self, trigger, eventinfo, asyncrun = True):
+  def trigger(self, trigger, eventinfo, asyncrun = False):
     self.server.debug(CC("事件 "), CC(str(trigger), "el"), CC(" 被触发！"))
     for func in self.fs[trigger.value].items():
       if asyncrun: self._asyncRun(func[1], (eventinfo, self.server, self.plugin))

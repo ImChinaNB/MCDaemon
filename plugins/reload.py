@@ -5,17 +5,16 @@ MCDaemonReloaded 重载插件
 """
 from event import TRIGGER
 from textapi import CC
-import builtins
 
 def reloadPlugin(ev, server, plugin):
   if not ev["content"].startswith("!!reload"): return
   if ev["sender"] not in ["ImSingularity", False]:
     server.tell(ev["sender"], CC("你没有重载插件的权限！", "4"))
     return
-  if reload_plugin == True:
+  if server.reloadPlugins == True:
     server.tell(ev["sender"], CC("已经在重载插件了，请勿重复执行！", "4"))
     return
-  builtins.reload_plugin = True
+  server.reloadPlugins = True
 
 listener = [
   {"type": TRIGGER.PLAYER_INFO, "func": reloadPlugin},

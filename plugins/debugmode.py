@@ -1,10 +1,9 @@
 """
-MCDaemonReloaded 重载插件
+MCDaemonReloaded 调试插件
 用于开关调试模式。
 指令: !!debug [on/off]
 """
 from event import TRIGGER
-import builtins
 from textapi import CC
 
 def debugmode(ev, server, plugin):
@@ -16,10 +15,10 @@ def debugmode(ev, server, plugin):
   if ev["sender"] not in ["ImSingularity", False, "ImLinDun"]:
     server.tell(ev["sender"], CC("你没有设置调试模式的权限！", "4"))
     return
-  if debugon == on:
+  if server.debugon == on:
     server.tell(ev["sender"], CC("已经处于该模式！", "4"))
     return
-  builtins.debugon = on
+  server.debugon = on
 
 listener = [
   {"type": TRIGGER.PLAYER_INFO, "func": debugmode},

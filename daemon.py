@@ -3,15 +3,12 @@
 This is the main file of MCDaemonReloaded.
 Written by ChinaNB, GPL 3.0 License.
 """
-import json, os, sys, threading, builtins
+import json, os, sys, threading, config
 
 from server import Server
 from handler import Handler
 from event import Event, TRIGGER
 from plugin import Plugin, loadPlugins
-builtins.reload_plugin = False
-builtins.debugon = False
-builtins.debugtargets = ["ImSingularity", "ImLinDun"]
 
 def asyncRun(func, args):
   thread = threading.Thread(target=func,args=args)
@@ -29,13 +26,12 @@ def getInput(server, event):
 
 print("[Daemon/Info] 启动中...")
 ## read config
-with open("config.json", "r") as f:
-  config = json.loads(f.read())
+cfg = config.loadConfig("daemon", {"cwd": "server", "command": "java -server -jar server.jar", "acwd": "/home/mc/new", "aswd": "/home/mc/new/server"})
 
 print("[Daemon/Info] 配置文件加载完毕！")
 
 stopserver = False
-server = Server(config["cwd"], config["command"])
+server = Server(cfg)
 event = Event()
 plugin = Plugin(server, event)
 event.setParm(server, plugin)
@@ -53,12 +49,13 @@ except Exception:
 while True:
   try:
     print(handler.tick())
-    if reload_plugin == True:
+    if server.reloadPlugins == True:
+      plugin.unloadall()
       plugin.clearall()
       print("[Daemon/Info] 插件重载被触发！")
       loadPlugins(plugin)
-      builtins.reload_plugin = False
-    if server.stopped():
+      server.reloadPlugins = False
+    if server.stopped() and stopserver:
       print("[Daemon/Info] 后端服务器停止了。正在停止 Daemon...")
       break
     if stopserver == True:
@@ -71,4 +68,9 @@ print("[Daemon/Info] Daemon 停止成功。")
 if server.stopped() == False:
   print("[Daemon/Warn] 发现服务器进程尚未结束，正在强制停止...")
   server.stop(True)
+
+print("[Daemon/Info] 服务器停止，卸载插件中。")
+plugin.unloadall()
+plugin.clearall()
+config.saveConfig("daemon", cfg)
 print("[Daemon/Info] 程序停止。")
