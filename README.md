@@ -10,4 +10,4 @@ Please keep in mind this project is in **early development** and there's current
 
 If you have any suggestions or find any bugs, please submit them in the Issues tab.
 
-*To the original creator: I've PM you for permission to make this project, however i didn't get a response in three months. Tell me if you don't agree and I'll delete this respository as soon as I can.*
+*To the original creator kafuuchino-desu: I've PM you for permission to make this project, however i didn't get a response in three months. Tell me if you don't agree and I'll delete this respository as soon as I can.*
