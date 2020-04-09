@@ -22,6 +22,6 @@ def debugmode(ev, server, plugin):
 
 listener = [
   {"type": TRIGGER.PLAYER_INFO, "func": debugmode},
-  {"type": TRIGGER.CONSOLE_INFO, "func": debugmode}
+  {"type": TRIGGER.CONSOLE_INPUT, "func": debugmode}
 ]
 name = "DebugModePlugin"

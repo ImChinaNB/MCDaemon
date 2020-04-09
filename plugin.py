@@ -18,16 +18,25 @@ class Plugin:
     self.plugs = []
     self.id = 0
   def clearall(self):
-    for plug in self.plugs:
-      del plug["plugin"]
-    del self.plugs
-    self.plugs = []
-    self.id = 0
-    self.event.clearall()
+    try:
+      for plug in self.plugs:
+        try:
+          del plug["plugin"]
+        except:
+          pass
+      del self.plugs
+      self.plugs = []
+      self.id = 0
+      self.event.clearall()
+    except:
+      pass
   def unloadall(self):
-    for i,j in enumerate(self.plugs):
-      if j != {}:
-        self.unload(i)
+    try:
+      for i,j in enumerate(self.plugs):
+        if j != {}:
+          self.unload(i)
+    except:
+      pass
   def register(self, id):
     self.server.debug(CC("注册插件事件钩子: "), CC(str(self.plugs[id]["plugin"].listener), "el"))
     for listener in self.plugs[id]["plugin"].listener:
@@ -70,7 +79,7 @@ class Plugin:
     try:
       self.server.debug(CC("卸载插件 "), CC(self.plugs[pluginId]["name"], "el"), CC(" 中，插件 ID 为 "), CC(pluginId, "al"))
       self.event.trigger(TRIGGER.PLUGIN_UNLOADING, {"name": self.plugs[pluginId]["name"], "plugin": self.plugs[pluginId]["plugin"]}, False)
-      deregister(pluginId)
+      self.deregister(pluginId)
       del self.plugs[pluginId]["plugin"]
       self.plugs[pluginId] = {}
       return True

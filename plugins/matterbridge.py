@@ -6,16 +6,17 @@ MCDaemonReloaded 服务器 MatterBridge 插件
 import config, requests, json, sys
 from event import TRIGGER
 from textapi import CC
-from daemon import asyncRun
 from threading import Timer
 stoprun = True
-cfg = {"enabled": False, "remote": "", "token": ""}
+cfg = config.loadConfig("matterbridge", {"enabled": False, "remote": "", "token": ""})
 
 def fetch(server, header, remote):
+  global cfg
   try:
     r = requests.get(remote + '/api/messages', headers=header)
     r.raise_for_status()
     j = r.json()
+    if len(j) > 0: print("[MatterBridge/Info] 从服务器读取到了", len(j), "条信息。")
     for text in j:
       server.say(CC("[Discord] ", "b"), CC("<" + text["username"] + "> ", "7"), CC(text["text"], "f"))
   except:
@@ -25,6 +26,7 @@ def fetch(server, header, remote):
   else:
     if not stoprun: Timer(5, fetch, (server, header, remote)).start()
 def loaded(ev, server, plugin):
+  global cfg
   if ev["name"] == name:
     cfg = config.loadConfig("matterbridge", {"enabled": False, "remote": "", "token": ""})
     if cfg["enabled"]:
@@ -32,14 +34,17 @@ def loaded(ev, server, plugin):
       stoprun = False
       fetch(server, {'Authorization': 'Bearer ' + cfg["token"]}, cfg["remote"])
 def unloading(ev, server, plugin):
+  global cfg
   if ev["name"] == name:
     global stoprun
     stoprun = True
     config.saveConfig("matterbridge", cfg)
 def message(ev, server, plugin):
+  global cfg
   if cfg["enabled"]:
     headerss = {'Authorization': 'Bearer ' + cfg["token"],'Content-Type': 'application/json'}
-    Timer(0, requests.post, {'url': cfg['remote']+'/api/message', 'headers': headerss, 'data': json.dumps({"text": ev["content"],"username":ev["sender"],"gateway":"discord-minecraft"})})
+    print("[MatterBridge/Info] 正在将信息发送到 Discord...")
+    Timer(0.1, requests.post, tuple(), {'url': cfg['remote']+'/api/message', 'headers': headerss, 'data': json.dumps({"text": ev["content"],"username":ev["sender"],"gateway":"discord-minecraft"})}).start()
 listener = [
   {"type": TRIGGER.PLUGIN_LOADED, "func": loaded},
   {"type": TRIGGER.PLUGIN_UNLOADING, "func": unloading},

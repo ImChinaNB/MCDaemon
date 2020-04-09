@@ -4,7 +4,17 @@ This is the main file of MCDaemonReloaded.
 Written by ChinaNB, GPL 3.0 License.
 """
 import json, os, sys, threading, config
+"""
+import atexit, readline
 
+histfile = os.path.join("cmd_history.txt")
+try:
+    readline.read_history_file(histfile)
+    readline.set_history_length(1000)
+except FileNotFoundError:
+    pass
+atexit.register(readline.write_history_file, histfile)
+"""
 from server import Server
 from handler import Handler
 from event import Event, TRIGGER
@@ -20,8 +30,20 @@ def getInput(server, event):
       inp = input()
     except:
       print("[Daemon/Error] 获取控制台输入时发生错误。重启输入线程。")
-    if inp.strip() != '':
-      event.trigger(TRIGGER.CONSOLE_INFO, {"h": "", "m": "", "s": "", "source": "console", "sender": False, "content": inp})
+    if inp == "halt":
+      print("[Daemon/Info] Daemon 开始强制停止。")
+      if server.stopped() == False:
+        print("[Daemon/Warn] 发现服务器进程尚未结束，正在强制停止...")
+        server.stop(True)
+
+      print("[Daemon/Info] 服务器停止，卸载插件中。")
+      plugin.unloadall()
+      plugin.clearall()
+      config.saveConfig("daemon", cfg)
+      print("[Daemon/Info] 程序停止。")
+      os._exit()
+    elif inp.strip() != '':
+      event.trigger(TRIGGER.CONSOLE_INPUT, {"h": "", "m": "", "s": "", "source": "console", "sender": False, "content": inp})
       server.execute(inp)      
 
 print("[Daemon/Info] 启动中...")
@@ -48,7 +70,8 @@ except Exception:
   server.stop()
 while True:
   try:
-    print(handler.tick())
+    t=handler.tick()
+    if t.strip("\n") != "": print(t)
     if server.reloadPlugins == True:
       plugin.unloadall()
       plugin.clearall()
@@ -63,6 +86,7 @@ while True:
   except Exception:
     print("[Daemon/Error] 在 TICK Daemon 时发生了错误！")
     __import__("traceback").print_exc(file=sys.stdout)
+
 
 print("[Daemon/Info] Daemon 停止成功。")
 if server.stopped() == False:

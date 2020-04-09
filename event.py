@@ -10,7 +10,7 @@ from enum import Enum
 import threading, builtins
 from textapi import CC
 
-count = 14
+count = 16
 class TRIGGER(Enum): # triggers enumerations
   SERVER_STOPPED = 0
   SERVER_STARTED = 1
@@ -27,6 +27,7 @@ class TRIGGER(Enum): # triggers enumerations
   PLAYER_COMMAND = 12
   PLAYER_COMMAND_ALL = 13
   PLAYER_INFO_ALL = 14
+  CONSOLE_INPUT = 15
 
 class Event:
   def __init__(self):
@@ -52,7 +53,7 @@ class Event:
     else:
       for i in range(0, count):
         self.fs[i].clear()
-  def trigger(self, trigger, eventinfo, asyncrun = False):
+  def trigger(self, trigger, eventinfo, asyncrun = True):
     self.server.debug(CC("事件 "), CC(str(trigger), "el"), CC(" 被触发！"))
     for func in self.fs[trigger.value].items():
       if asyncrun: self._asyncRun(func[1], (eventinfo, self.server, self.plugin))

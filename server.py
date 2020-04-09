@@ -49,6 +49,9 @@ class Server:
     cmd += "]"
     self.execute(cmd)
   def tell(self, player, *texts):
+    if player == False:
+      print("[Daemon/Info]", textapi.NC(*texts))
+      return
     cmd = "/tellraw " + player + " ["
     for text in texts:
       if isinstance(text, dict):

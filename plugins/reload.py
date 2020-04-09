@@ -7,7 +7,7 @@ from event import TRIGGER
 from textapi import CC
 
 def reloadPlugin(ev, server, plugin):
-  if not ev["content"].startswith("!!reload"): return
+  if ev["content"] != "!!reload": return
   if ev["sender"] not in ["ImSingularity", False]:
     server.tell(ev["sender"], CC("你没有重载插件的权限！", "4"))
     return
@@ -18,6 +18,6 @@ def reloadPlugin(ev, server, plugin):
 
 listener = [
   {"type": TRIGGER.PLAYER_INFO, "func": reloadPlugin},
-  {"type": TRIGGER.CONSOLE_INFO, "func": reloadPlugin}
+  {"type": TRIGGER.CONSOLE_INPUT, "func": reloadPlugin}
 ]
 name = "ReloadPlugin"
