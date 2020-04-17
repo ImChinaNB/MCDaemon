@@ -3,7 +3,7 @@ MCDaemonReloaded 服务器 增量备份插件 (Increasing Backup)
 提供多个槽位的增量备份与回档功能。
 要求 rdiff-backup.
 """
-import config, uuid, json, os, time, shlex
+import config, uuid, json, os, time, shlex, datetime
 from pathlib import Path
 from event import TRIGGER
 from subprocess import Popen
@@ -129,10 +129,14 @@ def makeRestore(server, slot):
     dest = None
     server.say(CC("[IB] ","a"), CC("回档已被终止。", "e"))
     return
+  print("[IB] 回档中:", inProgress, " 目标文件:", dest)
   server.stop()
 
 def onstopped(ev,server,plugin):
   global inProgress, dest
+  print("[IB] 服务器停止了。正在检测回档情况...")
+  print("[IB] 回档中:", inProgress, " 目标文件:", dest)
+  
   if inProgress and dest is not None: # 继续回档
     print("[IB] 继续回档操作。正在回档...")
     if doRestore(dest):
@@ -160,7 +164,7 @@ def makeView(server):
   if not inProgress:
     server.say(CC("[IB] ","a"), CC("下面为所有的备份：(ID/说明)", "e"))
     for i,j in enumerate(cfg["backups"]):
-      server.say(CC(str(i), "d"), CC(" / ", "f"), CC("无说明" if j["description"].strip()=="" else j["description"], "e"))
+      server.say(CC(str(i), "d"), CC(" / ", "f"), CC("无说明" if j["description"].strip()=="" else j["description"], "e"), CC(" / ", "f"), CC(datetime.datetime.utcfromtimestamp(int(j["time"])).strftime('%Y.%m.%d %H:%M:%S')))
 def refreshView(server):
   global cfg, inProgress
   if not inProgress:
@@ -197,6 +201,8 @@ def oncmd(ev, server, plugin):
     refreshView(server)
   elif (len(g) >= 2 and g[1].startswith("a")):
     makeAbort(server)
+  else:
+    server.say(CC("[IB] ", "a"), CC("错误的或不存在的指令。输入 !!ib help 查看命令帮助。"))
 def oninfo(ev, server,plugin):
   global savedGame, inProgress
   if ev["content"].startswith('Saved the game') and inProgress:

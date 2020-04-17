@@ -1,0 +1,5 @@
+TODO:
+1. plugins:
+ auto cleaner, simple calculator, item sender, 
+inf. sys:
+  better code and plugin system, bunch more (like mcdreforged)

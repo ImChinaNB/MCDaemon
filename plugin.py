@@ -75,6 +75,10 @@ class Plugin:
         self.id -= 1
       if stage >= 1: self.plugs.pop()
       return False
+  def getplugin(self, pluginName):
+    for plug in self.plugs:
+      if plug["plugin"] is not None and plug["name"].lower() == pluginName.lower():
+        return plug["plugin"]
   def unload(self, pluginId):
     try:
       self.server.debug(CC("卸载插件 "), CC(self.plugs[pluginId]["name"], "el"), CC(" 中，插件 ID 为 "), CC(pluginId, "al"))

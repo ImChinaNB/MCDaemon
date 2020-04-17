@@ -13,7 +13,7 @@ from textapi import CC
 class Handler:
   def __init__(self, server, event):
     self.server = server
-    self.stopped = False
+    self.stopped = True
     self.event = event
   def _getInfo(self, line):
     r = {"h": line[1:3], "m": line[4:6], "s": line[7:9], "source": "", "sender": "", "content": ""}
@@ -32,50 +32,53 @@ class Handler:
       print("[Daemon/Error] 无法解析控制台输出。原文本为: ")
       print("[Daemon/Error]", line)
     return r
-  def tick(self):
+  def track(self):
     # Run a tick, means get output from the server and deal with it.
     if self.server.stopped() and not self.stopped:
+      print("[Daemon/Info] 服务器进程已结束。输入 halt 退出 Daemon.")
+      self.server.iter.close()
+      del self.server.iter
       self.stopped = True
       self.event.trigger(TRIGGER.SERVER_STOPPED, {})
-      return self.server.recv().strip("\n")
+      return "mstop"
     if not self.server.stopped() and self.stopped:
+      print("[Daemon/Info] 服务器进程启动了.")
       self.stopped = False
       self.event.trigger(TRIGGER.SERVER_STARTING, {})
-      return self.server.recv().strip("\n")
-    r = self.server.recv() # get the output
-    for line in r.splitlines():
-      t = self._getInfo(line)
-      if t["content"].startswith("No player was found"): continue
-      self.server.debug(CC("控制台文本解析数据 ", "8"), CC(json.dumps(t), "6l"))
-      if t["content"].startswith("Done"):
-        self.event.trigger(TRIGGER.SERVER_STARTED, t)
-      elif t["content"].startswith("Starting minecraft server version"):
-        self.event.trigger(TRIGGER.SERVER_STARTING, t)
-      elif t["content"].startswith("Stopping server"):
-        self.event.trigger(TRIGGER.SERVER_STOPPING, t)
-      elif t["content"].startswith("A single server tick"):
-        self.event.trigger(TRIGGER.SERVER_HALT, t)
-      elif t["source"] == "Server thread/INFO" and re.match(r'[a-zA-Z_-]+ left the game', t["content"]) is not None:
-        t["sender"] = re.match(r'([a-zA-Z_-]+) left the game', t["content"]).group(1)
-        self.event.trigger(TRIGGER.PLAYER_LEAVE, t)
-      elif t["source"] == "Server thread/INFO" and re.match(r'[a-zA-Z_-]+ joined the game', t["content"]) is not None:
-        t["sender"] = re.match(r'([a-zA-Z_-]+) joined the game', t["content"]).group(1)
-        self.event.trigger(TRIGGER.PLAYER_JOIN, t)
-      elif t["source"] == "Server thread/INFO" and re.match(r'Player [a-zA-Z_-]+ \(UUID: .*?\) used command: ', t["content"]) is not None:
-        test = re.match(r'Player ([a-zA-Z_-]+) \(UUID: .*?\) used command: (.*)$', t["content"])
-        t["content"] = test.group(2)
-        t["sender"] = test.group(1)
-        if t["sender"].lower() not in self.server.playerlist_lower and self.server.offline_login:
-          self.server.debug(CC("玩家试图在未登录状态下执行指令 ", "8"), CC(t["sender"], "6l"))
-          self.event.trigger(TRIGGER.PLAYER_COMMAND_ALL, t)
-          continue # pass the event
-        self.event.trigger(TRIGGER.PLAYER_COMMAND, t)
-      elif t["sender"] != False:
-        if t["sender"].lower() not in self.server.playerlist_lower and self.server.offline_login:
-          self.server.debug(CC("玩家试图在未登录状态下说话 ", "8"), CC(t["sender"], "6l"))
-          self.event.trigger(TRIGGER.PLAYER_INFO_ALL, t)
-          continue # pass the event
-        self.event.trigger(TRIGGER.PLAYER_INFO, t)
-      else:
-        self.event.trigger(TRIGGER.SERVER_INFO, t)
-    return r.strip("\n")
+      return "mstart"
+  def tick(self, line):
+    self.stopped = False
+    t = self._getInfo(line.strip("\n"))
+    if t["content"].startswith("No player was found"): return
+    self.server.debug(CC("控制台文本解析数据 ", "8"), CC(json.dumps(t), "6l"))
+    if t["content"].startswith("Done"):
+      self.event.trigger(TRIGGER.SERVER_STARTED, t)
+    elif t["content"].startswith("Starting minecraft server version"):
+      self.event.trigger(TRIGGER.SERVER_STARTING, t)
+    elif t["content"].startswith("Stopping server"):
+      self.event.trigger(TRIGGER.SERVER_STOPPING, t)
+    elif t["content"].startswith("A single server tick"):
+      self.event.trigger(TRIGGER.SERVER_HALT, t)
+    elif t["source"] == "Server thread/INFO" and re.match(r'[a-zA-Z0-9_-]+ left the game', t["content"]) is not None:
+      t["sender"] = re.match(r'([a-zA-Z0-9_-]+) left the game', t["content"]).group(1)
+      self.event.trigger(TRIGGER.PLAYER_LEAVE, t)
+    elif t["source"] == "Server thread/INFO" and re.match(r'[a-zA-Z0-9_-]+ joined the game', t["content"]) is not None:
+      t["sender"] = re.match(r'([a-zA-Z0-9_-]+) joined the game', t["content"]).group(1)
+      self.event.trigger(TRIGGER.PLAYER_JOIN, t)
+    elif t["source"] == "Server thread/INFO" and re.match(r'Player [a-zA-Z0-9_-]+ \(UUID: .*?\) used command: ', t["content"]) is not None:
+      test = re.match(r'Player ([a-zA-Z0-9_-]+) \(UUID: .*?\) used command: (.*)$', t["content"])
+      t["content"] = test.group(2)
+      t["sender"] = test.group(1)
+      if t["sender"].lower() not in self.server.playerlist_lower and self.server.offline_login:
+        self.server.debug(CC("玩家试图在未登录状态下执行指令 ", "8"), CC(t["sender"], "6l"))
+        self.event.trigger(TRIGGER.PLAYER_COMMAND_ALL, t)
+        return
+      self.event.trigger(TRIGGER.PLAYER_COMMAND, t)
+    elif t["sender"] != False:
+      if t["sender"].lower() not in self.server.playerlist_lower and self.server.offline_login:
+        self.server.debug(CC("玩家试图在未登录状态下说话 ", "8"), CC(t["sender"], "6l"))
+        self.event.trigger(TRIGGER.PLAYER_INFO_ALL, t)
+        return
+      self.event.trigger(TRIGGER.PLAYER_INFO, t)
+    else:
+      self.event.trigger(TRIGGER.SERVER_INFO, t)
