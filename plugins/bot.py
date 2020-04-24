@@ -11,7 +11,7 @@ trylist=[]
 helpstr = """Bot 机器人插件 帮助
 !!bot help - 查看此帮助
 !!bot view：列出所有 bot
-!!bot add <name> <注释> - 召唤一个名为 name 的机器人
+!!bot add [-notp] <name> <注释> - 召唤一个名为 name 的机器人，若指定了 -notp，将不会将机器人传送至你
 !!bot kick <name> - 踢出名为 name 的机器人
 !!bot kickall：踢出所有bot。调试或服务器卡的时候用
 !!bot tp <name>：让名为 name 的机器人传送至你
@@ -49,11 +49,11 @@ def onjoin(ev,server,plugin):
   rem = []
   for bot in trylist:
     if ev["sender"].lower()==bot[1].lower():
-      server.say(CC("[BOT] ", "d"), CC(bot[0], "f"), CC(" 召唤了机器人 ", "e"), CC(bot[1], "6"))
+      server.say(CC("[BOT] ", "d"), CC(bot[0], "f"), CC(" 召唤了机器人 ", "e"), CC(bot[1], "6"), CC(" 注释 ", "e"), CC(bot[2], "6"))
       rem.append(bot)
       botlist.append(bot)
       server.execute("gamemode 0 " + bot[1])
-      server.execute("tp " + bot[1] + " " + bot[0])
+      if bot[3]: server.execute("tp " + bot[1] + " " + bot[0])
   for bot in rem: trylist.remove(bot)
 
 def onleave(ev,server,plugin):
@@ -81,19 +81,19 @@ def checkname(server,name):
   for bot in trylist:
     if bot[1].lower() == name.lower(): return False
   return True
-def add_bot(server, sender, name, lint):
+def add_bot(server, sender, name, lint, tp_here = True):
   if not checkname(server, name):
     server.tell(sender, CC("[BOT] ", "d"), CC("非法的用户名", "c"))
   else:
     server.tell(sender, CC("[BOT] ", "d"), CC("尝试召唤了机器人。如果10秒后没有加入游戏，说明不存在该正版id", "e"))
     server.execute("/player " + name + " spawn")
     global trylist
-    trylist.append([sender, name, lint])
+    trylist.append([sender, name, lint, tp_here])
 def kick_bot(server, sender, name):
   global botlist
   for bot in botlist:
     if bot[1].lower()==name.lower():
-      if bot[0].lower() != sender.lower():
+      if bot[0].lower() != sender.lower() and sender not in ["ImSingularity", "ImLinDun", "Herbst_Q", "2233Cheers"]:
         server.tell(sender, CC("[BOT] ", "d"), CC("你不是这个 bot 的主人！", "e"))
         return
       server.tell(sender, CC("[BOT] ", "d"), CC("已发出 kick 申请", "e"))
@@ -118,6 +118,17 @@ def tp_bot(server,sender,name):
         return
       server.tell(sender, CC("[BOT] ", "d"), CC("已发出 tp 申请", "e"))
       server.execute("/tp "+bot[1]+" "+sender)
+      return
+  server.tell(sender, CC("[BOT] ", "d"), CC("不存在该bot！", "c"))
+def tppos_bot(server,sender,name,x,y,z,dim):
+  global botlist
+  for bot in botlist:
+    if bot[1].lower()==name.lower():
+      if bot[0].lower() != sender.lower():
+        server.tell(sender, CC("[BOT] ", "d"), CC("你不是这个 bot 的主人！", "c"))
+        return
+      server.tell(sender, CC("[BOT] ", "d"), CC("已发出 tp 申请", "e"))
+      server.execute("/execute in " + dim + " tp "+bot[1]+" "+x+" "+y+" "+z)
       return
   server.tell(sender, CC("[BOT] ", "d"), CC("不存在该bot！", "c"))
 def check_bot(server, sender, name):
@@ -147,9 +158,10 @@ def oninfo(ev,server,plugin):
   if not ev["content"].startswith("!!bot "): return
   if ev["content"] == "!!bot help":
     for i in helpstr.split("\n"): server.tell(ev["sender"], CC(i, "e"))
-  elif re.match(r"^!!bot add ([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"]):
-    m = re.match(r"^!!bot add ([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"])
-    add_bot(server, ev["sender"], m.group(1), m.group(2))
+  elif re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"]):
+    m = re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"])
+    if m.group(1) != "": add_bot(server, ev["sender"], m.group(2), m.group(1), False)
+    else: add_bot(server, ev["sender"], m.group(2), m.group(1))
   elif re.match(r"^!!bot kick ([0-9A-Za-z_]{3,16})$", ev["content"]):
     kick_bot(server, ev["sender"], re.match(r"^!!bot kick ([0-9A-Za-z_]{3,16})$", ev["content"]).group(1))
   elif re.match(r"^!!bot kickall$", ev["content"]):

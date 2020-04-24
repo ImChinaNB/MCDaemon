@@ -22,6 +22,7 @@ def syncBackupList():
   tf = {}
   newest = None
   newesttime = -1
+  newesttimee = -1
   havelatest = False
   havelatestdescription = False
   for bk in cfg["backups"]:
@@ -31,11 +32,14 @@ def syncBackupList():
       havelatestdescription = bk["description"]
   for path in Path(cfg['backupdir'] + '/rdiff-backup-data/').glob('./increments.*.dir'):
     if path.is_file():
+      if path.stat().st_mtime > newesttimee:
+        newesttimee = path.stat().st_mtime
       if path.parts[-1] in tf: fl.append({"file": path.parts[-1], "description": tf[path.parts[-1]], "time": path.stat().st_mtime})
       elif path.stat().st_mtime > newesttime:
         newest = path.parts[-1]
         newesttime = path.stat().st_mtime
-  if havelatest and newest != None: fl.append({"file": newest, "description": havelatestdescription, "time": newesttime})
+  if havelatest and newest != None and newesttimee == newesttime: fl.append({"file": newest, "description": havelatestdescription, "time": newesttime})
+  if havelatest and newest == None: fl.append({"file": False, "description": havelatestdescription, "time": int(datetime.datetime.now().timestamp())})
   fl.sort(key=lambda x: x['time'], reverse=True)
   cfg["backups"] = fl
 def runCmd(cmd):
@@ -45,9 +49,10 @@ def runCmd(cmd):
 
 def doBackup(description, removeOld = True):
   global cfg
-  cfg['backups'].append({'file': False, 'description': description, 'time':0})
   if runCmd("rdiff-backup " + cfg["world"] + " " + cfg["backupdir"]) == 0: # rdiff-backup /home/mc/fabric/world* /backup/
     if removeOld: runCmd("rdiff-backup --force --remove-older-than " + cfg["slot"] + "B " + cfg["backupdir"])
+    syncBackupList()
+    cfg['backups'].append({'file': False, 'description': description, 'time':0})
     syncBackupList()
     return True
   else:
@@ -56,10 +61,15 @@ def doBackup(description, removeOld = True):
 def doRestore(filen):
   global cfg
   # rdiff-backup host.net::/remote-dir/rdiff-backup-data/increments/file.2003-03-05T12:21:41-07:00.diff.gz local-dir/file
-  if Path(cfg['backupdir'] + '/rdiff-backup-data/' + filen).is_file():
-    if cfg["backupwhenrollback"]: doBackup("回档前自动备份", False)
-    if runCmd("rdiff-backup --force " + cfg['backupdir'] + '/rdiff-backup-data/' + filen + " " + cfg["world"]) == 0:
-      return True
+  if filen == False or Path(cfg['backupdir'] + '/rdiff-backup-data/' + filen).is_file():
+    print("[IB] 备份原存档...")
+    if cfg["backupwhenrollback"]:
+      if doBackup("回档前自动备份", False) and filen == False:
+        filen = cfg['backups'][0]['file']
+    print("[IB] 开始回档...")
+    cmd = "rdiff-backup --force " + ("-r now" + cfg['backupdir']) if filen == False else (cfg['backupdir'] + '/rdiff-backup-data/' + filen) + " " + cfg["world"]
+    if runCmd("rm -rf " + cfg["world"]) == 0:
+      return bool(runCmd(cmd))
     else: return False
   else:
     return False
@@ -164,7 +174,7 @@ def makeView(server):
   if not inProgress:
     server.say(CC("[IB] ","a"), CC("下面为所有的备份：(ID/说明)", "e"))
     for i,j in enumerate(cfg["backups"]):
-      server.say(CC(str(i), "d"), CC(" / ", "f"), CC("无说明" if j["description"].strip()=="" else j["description"], "e"), CC(" / ", "f"), CC(datetime.datetime.utcfromtimestamp(int(j["time"])).strftime('%Y.%m.%d %H:%M:%S')))
+      server.say(CC(str(i), "d"), CC(" / ", "f"), CC("无说明" if j["description"].strip()=="" else j["description"], "e"), CC(" / ", "f"), CC(datetime.datetime.fromtimestamp(int(j["time"])).strftime('%Y.%m.%d %H:%M:%S')))
 def refreshView(server):
   global cfg, inProgress
   if not inProgress:
