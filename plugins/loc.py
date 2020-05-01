@@ -24,6 +24,7 @@ def printhelp(server):
 !!loc add <路标名称> here - 在你所在的位置新建路标
 !!loc del <路标名称或 ID> - 删除一个路标
 !!loc conv <路标名称或 ID> - 查看一个路标对应的地狱坐标或主世界坐标
+!!loc ex - 以 VoxelMap 格式显示所有坐标
 !!loc <路标名称或 ID> - 查看一个路标的信息。若该路标不存在，将在所有路标中搜索。
 !!loc - 查看所有路标
 世界 ID 说明: 0 - 主世界，1 - 末地，-1 - 地狱""".split("\n"): server.say(CC(t,"e"))
@@ -33,6 +34,11 @@ def getloc(locn):
     if str(i) == locn: return (loc,i)
     if loc["name"].lower() == locn.lower(): return (loc,i)
   return False
+def getdim(dim):
+  if dim == 0: return "overworld"
+  elif dim == -1: return "the_nether"
+  elif dim == 1: return "the_end"
+  else: return ""
 def checkname(namee):
   if getloc(namee) != False: return '已经存在该名字的路标'
   try:
@@ -90,6 +96,8 @@ def delete(server, ev):
     server.say(CC('[LOC] ','b'),CC(ev['sender'], 'f'), CC(' 删除了路标 ', 'e'), CC(t['name'], '6'),CC(' 位于 ', 'e'),getpos(t))
 def showloc(server,player,loc,id):
   server.tell(player, CC('[LOC] ','b'), CC('路标 <', 'e'), CC(loc['name'], '6'), CC('> 位于 ', 'e'), getpos(loc), CC('，ID 为 ','e'), CC(str(id), '6'))
+def showlocx(server,player,loc,id):
+  server.tell(player, "[name:{0}, x:{1}, y:{2}, z:{3}, dim:{4}, world:{5}]".format(loc['name'], loc['pos']['x'], loc['pos']['y'], loc['pos']['z'], loc['dim'], getdim(loc['dim'])))
 def get(server,ev):
   global locs
   args = ev['content'].split(' ')
@@ -98,11 +106,13 @@ def get(server,ev):
     for (j,i) in enumerate(locs):
       if args[1].lower()  in i['name'].lower():
         showloc(server,ev['sender'],i,j)
+        showlocx(server,ev['sender'],i,j)
         t = True
     if t == False:
       server.tell(ev['sender'], CC('[LOC] ','b'), CC('找不到任何路标，请检查输入！', 'c'))
   else:
     showloc(server,ev['sender'], t[0],t[1])
+    showlocx(server,ev['sender'],t[0],t[1])
 def conv(server,ev):
   global locs
   args = ev['content'].split(' ')
@@ -118,6 +128,9 @@ def conv(server,ev):
 def getAll(server,ev):
   global locs
   for i,loc in enumerate(locs): showloc(server,ev['sender'], loc,i)
+def getAllVoxel(server,ev):
+  global locs
+  for i,loc in enumerate(locs): showlocx(server,ev['sender'], loc,i)
 def oninfo(ev,server,plugin):
   if ev["sender"] != False and ev["content"].startswith('!!loc'):
     try:
@@ -135,6 +148,8 @@ def oninfo(ev,server,plugin):
         delete(server, ev)
       elif re.match(r"^!!loc conv \S+$", ev["content"]):
         conv(server, ev)
+      elif re.match(r"^!!loc ex$", ev["content"]):
+        getAllVoxel(server, ev)
       elif re.match(r"^!!loc \S+$", ev["content"]):
         get(server, ev)
       elif re.match(r"^!!loc$", ev["content"]):
@@ -142,6 +157,7 @@ def oninfo(ev,server,plugin):
       else:
         server.tell(ev["sender"], CC('[LOC] ','b'), CC('输入无效，使用 !!loc help 查看帮助', 'c'))
     except:
+      # __import__("traceback").print_exc()
       pass
 
 name = "LocationPlugin"

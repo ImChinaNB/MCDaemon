@@ -101,7 +101,7 @@ def makeBackup(server, description = ""):
   server.execute("save-on")
   savedGame = False
   inProgress = False
-def makeRestore(server, slot):
+def makeRestore(server, slot,plugin):
   global inProgress, savedGame, cfg, confirmed, dest, aborted
   if inProgress:
     server.say(CC("[IB] ","a"), CC("已经在进行备份或回档，请勿重复操作！", "cl"))
@@ -144,6 +144,7 @@ def makeRestore(server, slot):
     server.say(CC("[IB] ","a"), CC("回档已被终止。", "e"))
     return
   l.info("回档中: %s   目标文件: %s", inProgress, dest)
+  plugin.getplugin("bot").kickall_bot(server, False)
   server.stop()
 
 def onstopped(ev,server,plugin):
@@ -208,7 +209,7 @@ def oncmd(ev, server, plugin):
     if len(g) == 2: makeBackup(server)
     else: makeBackup(server, ' '.join(g[2:]))
   elif (len(g) >= 3 and g[1] == "restore"):
-    makeRestore(server, g[2])
+    makeRestore(server, g[2],plugin)
   elif (len(g) >= 2 and g[1] == "confirm"):
     makeConfirm(server, ev["sender"])
   elif (len(g) >= 2 and g[1] == "refresh"):

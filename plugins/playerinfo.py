@@ -16,7 +16,7 @@ def oninfo(ev, server, plugin):
       black_list = ['minecraft:']
       for str in black_list: process_str = process_str.replace(str,'')
       process_str = re.sub(r"(?<=\d)[a-zA-Z]", '', process_str)
-      player_info = yaml.load("["+process_str+"]")[0]
+      player_info = yaml.load("["+process_str+"]", Loader=yaml.FullLoader)[0]
       server.temp["pi"] = True
       server.temp["picb"] = player_info
     except:
