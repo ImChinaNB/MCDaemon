@@ -3,7 +3,8 @@
 This is the main file of MCDaemonReloaded.
 Written by ChinaNB, GPL 3.0 License.
 """
-import json, os, sys, threading, config, multiprocessing
+import json, os, sys, threading, logging, logger
+from config import loadConfig
 """
 import atexit, readline
 
@@ -19,15 +20,16 @@ from server import Server
 from handler import Handler
 from event import Event, TRIGGER
 from plugin import Plugin, loadPlugins
-import time
+import time, re
 
 def asyncRun(func, args):
   thread = threading.Thread(target=func,args=args)
   thread.setDaemon(True)
   thread.start()
   return thread
-def asyncRunProcess(func, args):
-  thread = multiprocessing.Process(target=func,args=args)
+def asyncRunNoDaemon(func, args):
+  thread = threading.Thread(target=func,args=args)
+  thread.setDaemon(False)
   thread.start()
   return thread
 def trackstatus(handler,server,plugin):
@@ -36,66 +38,75 @@ def trackstatus(handler,server,plugin):
     try:
       t = handler.track()
       if t == "mstop":
-        #print("[Daemon/Info] 服务器停止了。停止主进程。")
-        #try:
-        #  mainthread.terminate()
-        #except: pass
         pass
       elif t == "mstart":
-        #print("[Daemon/Info] 服务器开启了。启动主进程。")
-        #mainthread = asyncRunProcess(tickDaemon, (server,handler, plugin))
         pass
       if stopserver == True:
         server.stop()
       time.sleep(2)
     except:
-      print("[Daemon/Error] 获取服务器状态时发生错误。重启监控线程。")
       __import__("traceback").print_exc(file=sys.stdout)
+      l.warning("获取服务器状态时发生错误。重启监控线程。")
 def getInput(server, event, plugin):
   global mainthread
   while True:
     try:
       inp = input()
+      if inp == "halt":
+        l.info("程序停止中...")
+        if server.stopped() == False:
+          l.warning("发现服务器进程尚未结束，正在强制停止...")
+          server.stop(True)
+        l.info("卸载插件中...")
+        plugin.unloadall()
+        plugin.clearall()
+        l.info("程序停止。")
+        os._exit(0)
+      elif inp.strip() != '':
+        event.trigger(TRIGGER.CONSOLE_INPUT, {"h": "", "m": "", "s": "", "source": "console", "sender": False, "content": inp})
+        server.execute(inp) 
     except:
-      print("[Daemon/Error] 获取控制台输入时发生错误。重启输入线程。")
-    if inp == "halt":
-      print("[Daemon/Info] Daemon 开始强制停止。")
-      if server.stopped() == False:
-        print("[Daemon/Warn] 发现服务器进程尚未结束，正在强制停止...")
-        server.stop(True)
-      print("[Daemon/Info] 服务器停止，卸载插件中。")
-      plugin.unloadall()
-      plugin.clearall()
-      config.saveConfig("daemon", cfg)
-      print("[Daemon/Info] 程序停止。")
-      os._exit(0)
-    elif inp.strip() != '':
-      event.trigger(TRIGGER.CONSOLE_INPUT, {"h": "", "m": "", "s": "", "source": "console", "sender": False, "content": inp})
-      server.execute(inp)      
+      pass
+def isverbose(s):
+  return s.find("Fetching packet for removed entity class") != -1 or \
+    s.find("Wrong location! (") != -1 or \
+    s.find("Mismatch in destroy block pos: class_") != -1 or \
+    s.find("Can't keep up! Is the server overloaded") != -1
 def tickDaemon(server,handler,plugin):
   while True:
     try:
       lines = server.iter.readlines()
       for line in lines:
+        if line.rstrip("\n") != "" and not isverbose(line.rstrip("\n").strip()):
+          t = line.rstrip("\n")
+          r = re.match(r"^\[\d\d:\d\d:\d\d\] \[.+/.+\]: (.*)$", t)
+          if r:
+            l.info("SERVER %s", r.group(1))
+          else:
+            l.info("SERVER %s", t)
         handler.tick(line)
-        if line.rstrip("\n") != "": print(line.rstrip("\n"))
         if server.reloadPlugins == True:
-          plugin.unloadall()
-          plugin.clearall()
-          print("[Daemon/Info] 插件重载被触发！")
+          l.info("插件重载被触发！")
+          plugin.reloadall()
           loadPlugins(plugin)
           server.reloadPlugins = False
     except Exception:
       if not server.stopped():
-        print("[Daemon/Error] 在 TICK Daemon 时发生了错误！")
         __import__("traceback").print_exc(file=sys.stdout)
-        print("[Daemon/Error] 等待 5s ...")
-        time.sleep(5)
-print("[Daemon/Info] 启动中...")
-## read config
-cfg = config.loadConfig("daemon", {"cwd": "server", "command": "java -server -jar server.jar", "aswd": "/home/mc/new/server"})
+        l.error("在 TICK Daemon 时发生了错误！")
+        time.sleep(3)
 
-print("[Daemon/Info] 配置文件加载完毕！")
+logging.basicConfig(filename='mcd.log', filemode='a')
+l = logging.getLogger(__name__)
+
+l.info("程序启动。")
+## read config
+cfg = loadConfig("daemon", False)
+if not isinstance(cfg, dict):
+  l.critical("无法读取配置文件。")
+  os._exit(1)
+
+l.info("配置文件加载完毕。")
 
 stopserver = False
 mainthread = None
@@ -104,19 +115,23 @@ event = Event()
 plugin = Plugin(server, event)
 event.setParm(server, plugin)
 handler = Handler(server, event)
-print("[Daemon/Info] 服务器类初始化完毕！")
+l.info("基础类初始化完毕。")
 try:
-  print("[Daemon/Info] 输入线程启动中...")
+  l.info("各线程启动中...")
   asyncRun(getInput, (server,event,plugin))
   mainthread = None
-  print("[Daemon/Info] 监控线程启动中...")
-  asyncRun(trackstatus, (handler,server,plugin))
-  print("[Daemon/Info] 开始初始化插件...")
+  asyncRunNoDaemon(trackstatus, (handler,server,plugin))
+  l.info("各线程启动完毕。")
+  l.info("插件初始化...")
   loadPlugins(plugin)
-  print("[Daemon/Info] 后端游戏服务器启动中...")
+  l.info("插件初始化完毕。")
+  l.info("启动后台服务器...")
   server.start()
-  print("[Daemon/Info] 主线程启动中...")
+  l.info("启动服务器处理线程...")
   asyncRun(tickDaemon, (server,handler,plugin))
+  l.info("MCDR 初始化完毕。")
 except Exception:
-  __import__("traceback").print_exc(file=sys.stdout)
-  server.stop()
+  l.error("无法初始化 MCDR。正在尝试停止服务器... 输入 halt 退出程序。")
+  try:
+    server.stop()
+  except: pass

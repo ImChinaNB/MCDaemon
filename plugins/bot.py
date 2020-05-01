@@ -11,11 +11,16 @@ trylist=[]
 helpstr = """Bot 机器人插件 帮助
 !!bot help - 查看此帮助
 !!bot view：列出所有 bot
-!!bot add [-notp] <name> <注释> - 召唤一个名为 name 的机器人，若指定了 -notp，将不会将机器人传送至你
+!!bot add [-notp] <name> <注释>
+ - 召唤一个名为 name 的机器人，若指定了 -notp，将不会将机器人传送至你
+ - 机器人将会出生在世界出生点，如果指定了 -notp！ 
 !!bot kick <name> - 踢出名为 name 的机器人
-!!bot kickall：踢出所有bot。调试或服务器卡的时候用
-!!bot tp <name>：让名为 name 的机器人传送至你
-!!bot action <name> <action>：执行 bot 动作，参数列表可输入 !!bot actionlist 查看
+!!bot kickall - 踢出所有bot。调试或服务器卡的时候用
+!!bot tp <name> - 让名为 name 的机器人传送至你
+!!bot tppos <name> <X> <Y> <Z> <dim>
+ - 让名为 name 的机器人传送至该位置
+ - 其中 dim 是 overworld, the_nether, the_end 中的一个，若没有指定，则默认为 overworld
+!!bot action <name> <action> - 执行 bot 动作，参数列表可输入 !!bot actionlist 查看
 """
 actionstr = """动作列表
 attack/swapHands/use/jump every N/once/keep: 攻击/交换主副手/使用/跳跃 每 N ticks/仅此一次/一直
@@ -127,8 +132,8 @@ def tppos_bot(server,sender,name,x,y,z,dim):
       if bot[0].lower() != sender.lower():
         server.tell(sender, CC("[BOT] ", "d"), CC("你不是这个 bot 的主人！", "c"))
         return
-      server.tell(sender, CC("[BOT] ", "d"), CC("已发出 tp 申请", "e"))
-      server.execute("/execute in " + dim + " tp "+bot[1]+" "+x+" "+y+" "+z)
+      server.tell(sender, CC("[BOT] ", "d"), CC("已发出 tp [{0},{1},{2} {3}] 申请".format(x,y,z,dim), "e"))
+      server.execute("/execute in {0} run tp {1} {2} {3} {4}".format(dim,bot[1],x,y,z))
       return
   server.tell(sender, CC("[BOT] ", "d"), CC("不存在该bot！", "c"))
 def check_bot(server, sender, name):
@@ -160,14 +165,17 @@ def oninfo(ev,server,plugin):
     for i in helpstr.split("\n"): server.tell(ev["sender"], CC(i, "e"))
   elif re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"]):
     m = re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"])
-    if m.group(1) != "": add_bot(server, ev["sender"], m.group(2), m.group(1), False)
-    else: add_bot(server, ev["sender"], m.group(2), m.group(1))
+    if m.group(1) != "": add_bot(server, ev["sender"], m.group(2), m.group(3), False)
+    else: add_bot(server, ev["sender"], m.group(2), m.group(3))
   elif re.match(r"^!!bot kick ([0-9A-Za-z_]{3,16})$", ev["content"]):
     kick_bot(server, ev["sender"], re.match(r"^!!bot kick ([0-9A-Za-z_]{3,16})$", ev["content"]).group(1))
   elif re.match(r"^!!bot kickall$", ev["content"]):
     kickall_bot(server, ev["sender"])
   elif re.match(r"^!!bot tp ([0-9A-Za-z_]{3,16})$", ev["content"]):
     tp_bot(server, ev["sender"], re.match(r"^!!bot tp ([0-9A-Za-z_]{3,16})$", ev["content"]).group(1))
+  elif re.match(r"^!!bot tppos ([0-9A-Za-z_]{3,16}) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) (|overworld|the_end|the_nether)$", ev["content"]):
+    m = re.match(r"^!!bot tppos ([0-9A-Za-z_]{3,16}) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) (|overworld|the_end|the_nether)$", ev["content"])
+    tppos_bot(server, ev["sender"], m.group(1), m.group(2),m.group(3),m.group(4),m.group(5) if m.group(5)!="" else "overworld")
   elif re.match(r"^!!bot actionlist$", ev["content"]):
     for i in actionstr.split("\n"): server.tell(ev["sender"], CC(i, "e"))
   elif re.match(r"^!!bot view$", ev["content"]):

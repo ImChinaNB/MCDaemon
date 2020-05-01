@@ -5,14 +5,17 @@ Written by ChinaNB, GPL 3.0 License.
 
 config: provide some utils to deal with config files.
 """
-import json, os, os.path, re
+import json, os, os.path, re, logging, builtins
+import logging
+l = logging.getLogger(__name__)
 
 def vaildname(filename):
-  if not os.path.normpath('config/' + filename).startswith('config/') or re.search(r'[^A-Za-z0-9_\-]', filename):
+  if not os.path.normpath('config/' + filename).startswith('config') or re.search(r'[^A-Za-z0-9_\-]', filename):
     return False
   return True
 def loadConfig(filename, default = {}):
   if not vaildname(filename): return False
+  l.debug("读取配置文件 %s", filename)
   try:
     with open("config/" + filename + ".json", "r", encoding='utf-8') as f:
       return json.load(f)

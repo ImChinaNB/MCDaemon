@@ -22,11 +22,13 @@ helpstr = """SelfControl 自我控制插件 帮助
 def doclick(server, sender, typ, cot):
   command = None
   if cot == "once": command = "/player " + sender + " " + typ + " once"
-  elif cot == "once": command = "/player " + sender + " " + typ + " continuous"
+  elif cot == "keep": command = "/player " + sender + " " + typ + " continuous"
   elif cot.startswith("every"): command = "/player " + sender + " " + typ + " interval " + cot[6:]
   if command:
     server.execute(command)
     server.tell(sender, CC("[SELF] ","d"), CC("执行操作 ", "e"), CC(typ, "6"), CC(" "), CC(cot, "6"))
+  else:
+    server.tell(sender, CC("[SELF] ","d"), CC("无法执行操作 ", "e"), CC(typ, "6"), CC(" "), CC(cot, "6"))
 def oninfo(ev,server,plugin):
   if ev["content"] == "!!self":
     for i in helpstr.split("\n"): server.tell(ev["sender"], CC(i, "e"))

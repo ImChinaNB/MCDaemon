@@ -142,8 +142,7 @@ def oninfo(ev,server,plugin):
       else:
         server.tell(ev["sender"], CC('[LOC] ','b'), CC('输入无效，使用 !!loc help 查看帮助', 'c'))
     except:
-      print("[Daemon/Location/Error] error!")
-      __import__("traceback").print_exc()
+      pass
 
 name = "LocationPlugin"
 listener = [

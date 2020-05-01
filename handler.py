@@ -9,6 +9,8 @@ And trigger events according to the output.
 import threading, re, builtins, json
 from event import TRIGGER
 from textapi import CC
+from logging import getLogger
+l = getLogger(__name__)
 
 class Handler:
   def __init__(self, server, event):
@@ -29,20 +31,19 @@ class Handler:
         r["sender"] = False
         r["content"] = line[11:].replace('[' + r["source"] + ']: ' , '' , 1)
     except:
-      print("[Daemon/Error] 无法解析控制台输出。原文本为: ")
-      print("[Daemon/Error]", line)
+      l.warning("无法解析控制台输出。原文本为: %s", line)
     return r
   def track(self):
     # Run a tick, means get output from the server and deal with it.
     if self.server.stopped() and not self.stopped:
-      print("[Daemon/Info] 服务器进程已结束。输入 halt 退出 Daemon.")
+      l.info("服务器进程已结束。输入 halt 退出 Daemon.")
       self.server.iter.close()
       del self.server.iter
       self.stopped = True
       self.event.trigger(TRIGGER.SERVER_STOPPED, {})
       return "mstop"
     if not self.server.stopped() and self.stopped:
-      print("[Daemon/Info] 服务器进程启动了.")
+      l.info("服务器进程启动了.")
       self.stopped = False
       self.event.trigger(TRIGGER.SERVER_STARTING, {})
       return "mstart"

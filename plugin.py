@@ -6,17 +6,104 @@ Written by ChinaNB, GPL 3.0 License.
 plugin: manage all plugins.
 Hook their events at startup & rehook when reload. also offer some utils.
 """
-import importlib.util, uuid, sys, builtins
+import importlib.util
+import uuid
+import sys
 from event import TRIGGER
 from pathlib import Path
 from textapi import CC
+import threading
+import ctypes, inspect, logging
+import time
+l = logging.getLogger(__name__)
+
+def _async_raise(tid, exctype):
+    """raises the exception, performs cleanup if needed"""
+    tid = ctypes.c_long(tid)
+    if not inspect.isclass(exctype):
+        exctype = type(exctype)
+    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(exctype))
+    if res == 0:
+        raise ValueError("invalid thread id")
+    elif res != 1:
+        # """if it returns a number greater than one, you're in trouble,
+        # and you should call it again with exc=NULL to revert the effect"""
+        ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, None)
+        raise SystemError("PyThreadState_SetAsyncExc failed")
+
+class stoppable_thread(threading.Thread):
+  def __init__(self, source,server, plugin, func, *args):
+    threading.Thread.__init__(self)
+    self.p = [server,plugin,func,args]
+    self.source = source
+    self.killed = False
+  
+  def run(self):
+    try:
+      self.p[2](self.p[0],self.p[1],*self.p[3])
+    except SystemExit:
+      l.info("Thread from %s has been terminated.", self.source)
+    except:
+      l.warning("Thread from %s has ended of uncaught exception.", self.source)
+  def start(self): 
+    self.__run_backup = self.run 
+    self.run = self.__run       
+    threading.Thread.start(self) 
+  
+  def __run(self): 
+    sys.settrace(self.globaltrace) 
+    self.__run_backup() 
+    self.run = self.__run_backup 
+
+  def globaltrace(self, frame, event, arg): 
+    if event == 'call': 
+      return self.localtrace 
+    else: 
+      return None
+  
+  def localtrace(self, frame, event, arg): 
+    if self.killed: 
+      if event == 'line': 
+        raise SystemExit() 
+    return self.localtrace 
+  
+  def kill(self): 
+    self.killed = True
+
+  def terminate(self): 
+    _async_raise(self.ident, SystemExit)
 
 class Plugin:
   def __init__(self, server, event):
     self.server = server
     self.event = event
     self.plugs = []
+    self.reloading = False
+    self.threads = []
     self.id = 0
+  def asyncRun(self, source, func, *args):
+    if self.reloading: return False
+    t = stoppable_thread(source,self.server,self,func,*args)
+    t.start()
+    if t.is_alive(): self.threads.append(t)
+    return t.is_alive()
+  def reloadall(self):
+    self.reloading = True
+    # terminate all plugin threads
+    for thread in self.threads:
+      thread.terminate()
+      thread.kill()
+      # if thread.is_alive(): thread.join()
+      if thread.is_alive():
+        l.warning("Thread %s is still running, ignoring.", str(thread))
+    for thread in self.threads.copy():
+      self.threads.remove(thread)
+    # first unload all
+    self.unloadall()
+    # then clear all
+    self.clearall()
+    self.reloading = False
+
   def clearall(self):
     try:
       for plug in self.plugs:
@@ -62,7 +149,6 @@ class Plugin:
       self.id += 1
       stage = 2
       self.register(len(self.plugs) - 1)
-      self.event.trigger(TRIGGER.PLUGIN_LOADED, {"name": self.plugs[-1]["name"], "plugin": self.plugs[-1]["plugin"]}, False)
       self.server.debug(CC("插件加载完成: "), CC(pluginPath, "el"))
       return self.plugs[-1]["id"]
     except:
@@ -95,6 +181,8 @@ class Plugin:
 
 def loadPlugins(plugin):
   for plug in Path('plugins/').iterdir():
-    if plug.is_file() and plug.suffix == '.py' and str(plug) != "plugins/__init__.py":
-      print("[Daemon/Info] 初始化插件 " + str(plug))
+    if plug.is_file() and plug.suffix == '.py' and str(plug).find("__init__.py") == -1:
+      l.debug("初始化插件 %s", str(plug))
       plugin.load(str(plug))
+  for plug in plugin.plugs:
+    plugin.event.trigger(TRIGGER.PLUGIN_LOADED, {"name": plug["name"], "plugin": plug["plugin"]}, False)

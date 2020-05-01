@@ -8,6 +8,8 @@ from pathlib import Path
 from event import TRIGGER
 from subprocess import Popen
 from textapi import CC
+from logging import getLogger
+l = getLogger(__name__)
 
 cfg = config.loadConfig("backup", {"world": "", "slot": "16", "backupdir": "/backup", "backupwhenrollback": True, "logfile": "rdiff.log", "backups": []})
 aborted = False
@@ -62,14 +64,16 @@ def doRestore(filen):
   global cfg
   # rdiff-backup host.net::/remote-dir/rdiff-backup-data/increments/file.2003-03-05T12:21:41-07:00.diff.gz local-dir/file
   if filen == False or Path(cfg['backupdir'] + '/rdiff-backup-data/' + filen).is_file():
-    print("[IB] 备份原存档...")
+    l.info("备份原存档...")
     if cfg["backupwhenrollback"]:
       if doBackup("回档前自动备份", False) and filen == False:
         filen = cfg['backups'][0]['file']
-    print("[IB] 开始回档...")
-    cmd = "rdiff-backup --force " + ("-r now" + cfg['backupdir']) if filen == False else (cfg['backupdir'] + '/rdiff-backup-data/' + filen) + " " + cfg["world"]
+    l.info("开始回档...")
+    if filen: ojbk = cfg['backupdir'] + '/rdiff-backup-data/' + filen
+    else: ojbk = "-r now " + cfg['backupdir']
+    cmd = "rdiff-backup --force {0} {1}".format(ojbk, cfg["world"])
     if runCmd("rm -rf " + cfg["world"]) == 0:
-      return bool(runCmd(cmd))
+      return not bool(runCmd(cmd))
     else: return False
   else:
     return False
@@ -139,21 +143,21 @@ def makeRestore(server, slot):
     dest = None
     server.say(CC("[IB] ","a"), CC("回档已被终止。", "e"))
     return
-  print("[IB] 回档中:", inProgress, " 目标文件:", dest)
+  l.info("回档中: %s   目标文件: %s", inProgress, dest)
   server.stop()
 
 def onstopped(ev,server,plugin):
   global inProgress, dest
-  print("[IB] 服务器停止了。正在检测回档情况...")
-  print("[IB] 回档中:", inProgress, " 目标文件:", dest)
+  l.info("服务器停止了。正在检测回档情况...")
+  l.info("回档中: %s   目标文件: %s", inProgress, dest)
   
   if inProgress and dest is not None: # 继续回档
-    print("[IB] 继续回档操作。正在回档...")
+    l.info("继续回档操作。正在回档...")
     if doRestore(dest):
-      print("[IB] 回档成功。启动服务器。")
+      l.info("回档成功。启动服务器。")
       server.start()
     else:
-      print("[IB] 回档失败。服务器将处于停滞状态。")
+      l.critical("回档失败。服务器将处于停滞状态。")
     
     dest = None
     inProgress = False

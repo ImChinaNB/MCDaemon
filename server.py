@@ -8,6 +8,8 @@ e.g s = Server("/home/mc/fabric", "java -jar fabric-server.jar nogui")
 """
 from subprocess import Popen, PIPE, STDOUT
 import os, select, time, builtins, textapi, json, platform, io
+from logging import getLogger
+l = getLogger(__name__)
 
 class Server:
   def __init__(self, cfg):
@@ -24,12 +26,12 @@ class Server:
     self.process = ""
   def start(self):
     if not self.stopped(): return False
-    print("[Daemon/Server] 服务器启动中...")
+    l.info("服务器启动中...")
     self.process = Popen(self.command.split(" "), cwd=self.cwd, stdin=PIPE, stdout=PIPE, stderr=STDOUT, bufsize=1)
     if platform.system() != "Windows":
       # use follow direct import statements to mess up PyLint, avoiding fucking errors cuz i'm on windows
       __import__("fcntl").fcntl(self.process.stdout, __import__("fcntl").F_SETFL, __import__("fcntl").fcntl(self.process.stdout, __import__("fcntl").F_GETFL) | __import__("os").O_NONBLOCK)
-    print("[Daemon/Server] 服务器 IO 重定向到: 主线程")
+    l.info("服务器 IO 重定向 ---> 主线程")
     self.iter = io.TextIOWrapper(self.process.stdout, line_buffering=True, encoding="utf-8")
   def stop(self, force=False):
     if force: self.process.kill()
@@ -53,7 +55,7 @@ class Server:
     self.execute(cmd)
   def tell(self, player, *texts):
     if player == False:
-      print("[Daemon/Info]", textapi.NC(*texts))
+      l.info("向控制台的消息: %s", textapi.NC(*texts))
       return
     cmd = "/tellraw " + player + " ["
     for text in texts:
@@ -66,7 +68,7 @@ class Server:
     self.execute(cmd)
   def debug(self, *texts):
     if self.debugon:
-      print("[Daemon/Debug]", textapi.NC(*texts))
+      l.debug(textapi.NC(*texts))
       f = list(texts)
       f = [textapi.CC("[Daemon/Debug] ", "7")] + f
       for target in self.debugtargets:

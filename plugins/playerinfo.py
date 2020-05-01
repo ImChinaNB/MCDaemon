@@ -12,16 +12,11 @@ def oninit(ev,server,plugin):
 def oninfo(ev, server, plugin):
   if ("following entity data" in ev["content"]) and server.temp["pi"] == False:
     try:
-      print("PlayerInfoAPI 获取到了数据。正在进行处理...")
       process_str = re.sub(r'^.*? has the following entity data: ', '', ev["content"])
-      print("PlayerInfoAPI 处理阶段 1/3")
       black_list = ['minecraft:']
       for str in black_list: process_str = process_str.replace(str,'')
       process_str = re.sub(r"(?<=\d)[a-zA-Z]", '', process_str)
-      print("PlayerInfoAPI 处理阶段 2/3")
       player_info = yaml.load("["+process_str+"]")[0]
-      print("PlayerInfoAPI 处理阶段 3/3")
-      print("PlayerInfoAPI 发送了数据")
       server.temp["pi"] = True
       server.temp["picb"] = player_info
     except:

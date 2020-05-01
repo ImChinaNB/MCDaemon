@@ -53,9 +53,11 @@ class Event:
     else:
       for i in range(0, count):
         self.fs[i].clear()
-  def trigger(self, trigger, eventinfo, asyncrun = True):
+  def trigger(self, trigger, eventinfo, asyncrun = "-"):
     self.server.debug(CC("事件 "), CC(str(trigger), "el"), CC(" 被触发！"))
+    if asyncrun == "-":
+      if trigger in [TRIGGER.PLUGIN_UNLOADING, TRIGGER.SERVER_HALT]: asyncrun = False
+      else: asyncrun = True
     for func in self.fs[trigger.value].items():
       if asyncrun: self._asyncRun(func[1], (eventinfo, self.server, self.plugin))
       else: func[1](eventinfo, self.server, self.plugin)
-    
