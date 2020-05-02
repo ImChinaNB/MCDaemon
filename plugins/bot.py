@@ -80,7 +80,7 @@ def onjoin(ev,server,plugin):
       if bot[3]: server.execute("tp " + bot[1] + " " + bot[0])
       elif bot[1] in loclist:
         lc = loclist[bot[1]]
-        server.execute("execute in {0} run tp {1} {2} {3} {4} {5} {6}".format(["the_end","overworld","the_nether"][lc[3]+1],bot[1],lc[0],lc[1],lc[2],lc[4],lc[5]))
+        server.execute("execute in {0} run tp {1} {2} {3} {4} {5} {6}".format(["the_nether","overworld","the_end"][lc[3]+1],bot[1],lc[0],lc[1],lc[2],lc[4],lc[5]))
   for bot in rem: trylist.remove(bot)
 
 def onleave(ev,server,plugin):
@@ -208,7 +208,7 @@ def view_bot(server, sender):
 def log_bot(server, sender):
   global botlog
   for log in botlog:
-    server.tell(sender, CC("[BOT] ", "d"), CC("{0}  玩家 ".format(datetime.datetime.fromtimestamp(log[3]).strftime("%m-%d %H:%M:%S %p")), "e"), CC(log[1], "f"), CC(" 召唤 " if log[0] == 1 else " 踢出 ","e"), CC(log[2], "6"))
+    server.tell(sender, CC("[BOT] ", "d"), CC("{0}  玩家 ".format(datetime.datetime.fromtimestamp(log[3]).strftime("%m-%d %H:%M:%S %p")), "e"), CC("console" if log[1] == False else log[1], "f"), CC(" 召唤 " if log[0] == 1 else " 踢出 ","e"), CC(log[2], "6"))
 def act_bot(server,sender,name,act,cot):
   server.execute("/player " + name + " " + act + " " + cot.replace("every", "interval").replace("keep", "continuous"))
   server.tell(sender, CC("已发出 ","e"), CC(act+ " " + cot,"6"), CC(" 动作申请","e"))

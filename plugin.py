@@ -139,7 +139,7 @@ class Plugin:
     stage = 0
     try:
       self.server.debug(CC("加载插件中: "), CC(pluginPath, "el"))
-      spec = importlib.util.spec_from_file_location('plug_' + str(self.id), pluginPath)
+      spec = importlib.util.spec_from_file_location(pluginPath.replace("plugin/","").replace("plugin\\",""), pluginPath)
       self.plugs.append({"plugin": importlib.util.module_from_spec(spec)})
       stage = 1
       spec.loader.exec_module(self.plugs[-1]["plugin"])

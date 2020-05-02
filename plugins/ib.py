@@ -144,7 +144,7 @@ def makeRestore(server, slot,plugin):
     server.say(CC("[IB] ","a"), CC("回档已被终止。", "e"))
     return
   l.info("回档中: %s   目标文件: %s", inProgress, dest)
-  plugin.getplugin("bot").kickall_bot(server, False)
+  plugin.getplugin("BotPlugin").kickall_bot(server, False, plugin)
   server.stop()
 
 def onstopped(ev,server,plugin):

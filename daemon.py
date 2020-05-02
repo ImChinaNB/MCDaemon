@@ -75,6 +75,7 @@ def isverbose(s):
 def tickDaemon(server,handler,plugin):
   while True:
     try:
+      if not hasattr(server, "iter"): pass
       lines = server.iter.readlines()
       for line in lines:
         if line.rstrip("\n") != "" and not isverbose(line.rstrip("\n").strip()):
@@ -97,7 +98,7 @@ def tickDaemon(server,handler,plugin):
         time.sleep(3)
 
 logging.basicConfig(filename='mcd.log', filemode='a')
-l = logging.getLogger(__name__)
+l = logging.getLogger("daemon")
 
 l.info("程序启动。")
 ## read config
