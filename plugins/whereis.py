@@ -4,7 +4,7 @@ MCDaemonReloaded Whereis Plugin
 """
 from plugins.playerinfo import getPlayerInfo
 from event import TRIGGER
-from textapi import CC
+from utils import CC
 import re
 def mixhover(text,x,y,z):
   return {**text, **{'hoverEvent': {'action': 'show_text', 'value': u'§a[' + str(x) + u', ' + str(y) + u', ' + str(z) + u']§r'}}}
@@ -17,10 +17,10 @@ def getdim(dim):
   elif dim == 1: return "the_end"
   else: return ""
 def oninfo(ev,server,plugin):
-  if ev['content'] == '!!whereis help':
+  if ev['content'] == '!!whereis' or ev['content'] == '!!whereis help':
     server.tell(ev['sender'], CC('用法：!!whereis <玩家名>', 'e'))
-  elif re.match(r"^!!whereis ([a-zA-Z0-9_]{3,16})$", ev['content']):
-    player = re.match(r"^!!whereis ([a-zA-Z0-9_]{3,16})$", ev['content']).group(1)
+  elif re.match(r"^!!whereis ([a-zA-Z0-9_]{1,16})$", ev['content']):
+    player = re.match(r"^!!whereis ([a-zA-Z0-9_]{1,16})$", ev['content']).group(1)
     if not player.lower() in server.playerlist_lower:
       server.tell(ev['sender'], CC('该玩家不存在', 'c'))
     t = getPlayerInfo(server, player, 'Pos')

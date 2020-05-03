@@ -10,6 +10,9 @@ def oninit(ev,server,plugin):
     server.temp["pi"] = None
     server.temp["picb"] = None
 def oninfo(ev, server, plugin):
+  if ("No entity was found" in ev["content"]) and server.temp["pi"] == False:
+    server.temp["pi"] = True
+    server.temp["picb"] = None
   if ("following entity data" in ev["content"]) and server.temp["pi"] == False:
     try:
       process_str = re.sub(r'^.*? has the following entity data: ', '', ev["content"])

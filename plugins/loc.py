@@ -3,19 +3,19 @@ MCDaemonReloaded 路标插件
 用于存储位置，方便找机器啥的
 """
 from event import TRIGGER
-import json, config, re
-from textapi import CC
+import json, utils, re
+from utils import CC
 from plugins.playerinfo import getPlayerInfo
 locs = []
 
 def onload(ev,sender,plugin):
   if ev["name"] == name:
     global locs
-    locs = config.loadConfig('location', [])
+    locs = utils.loadData('location', [])
 def onunload(ev,sender,plugin):
   if ev["name"] == name:
     global locs
-    config.saveConfig('location', locs)
+    utils.saveData('location', locs)
 def printhelp(server):
   for t in """Location 路标插件 帮助
 !!loc help - 查看此帮助
@@ -124,7 +124,9 @@ def conv(server,ev):
   if t1 is None:
     server.tell(ev['sender'], CC('[LOC] ','b'), CC('该路标位于末地！', 'c'))
   showloc(server,ev['sender'],t[0],t[1])
+  showlocx(server,ev['sender'],t[0],t[1])
   showloc(server,ev['sender'],t1,t[1])
+  showlocx(server,ev['sender'],t1,t[1])
 def getAll(server,ev):
   global locs
   for i,loc in enumerate(locs): showloc(server,ev['sender'], loc,i)
@@ -133,32 +135,28 @@ def getAllVoxel(server,ev):
   for i,loc in enumerate(locs): showlocx(server,ev['sender'], loc,i)
 def oninfo(ev,server,plugin):
   if ev["sender"] != False and ev["content"].startswith('!!loc'):
-    try:
-      if re.match(r"^!!loc help$", ev["content"]):
-        printhelp(server)
-      elif re.match(r"^!!loc save$", ev["content"]):
-        global locs
-        config.saveConfig('location', 'locs')
-        server.tell(ev["sender"], CC('[LOC] ','b'), CC('保存完毕', 'e'))
-      elif re.match(r"^!!loc add \S+ -?\d+ -?\d+ -?\d+ (-1|0|1)$", ev["content"]):
-        add(server, ev)
-      elif re.match(r"^!!loc add \S+ here$", ev["content"]):
-        addHere(server, ev)
-      elif re.match(r"^!!loc del \S+$", ev["content"]):
-        delete(server, ev)
-      elif re.match(r"^!!loc conv \S+$", ev["content"]):
-        conv(server, ev)
-      elif re.match(r"^!!loc ex$", ev["content"]):
-        getAllVoxel(server, ev)
-      elif re.match(r"^!!loc \S+$", ev["content"]):
-        get(server, ev)
-      elif re.match(r"^!!loc$", ev["content"]):
-        getAll(server, ev)
-      else:
-        server.tell(ev["sender"], CC('[LOC] ','b'), CC('输入无效，使用 !!loc help 查看帮助', 'c'))
-    except:
-      # __import__("traceback").print_exc()
-      pass
+    if re.match(r"^!!loc help$", ev["content"]):
+      printhelp(server)
+    elif re.match(r"^!!loc save$", ev["content"]):
+      global locs
+      utils.saveData('location', locs)
+      server.tell(ev["sender"], CC('[LOC] ','b'), CC('保存完毕', 'e'))
+    elif re.match(r"^!!loc add \S+ -?\d+ -?\d+ -?\d+ (-1|0|1)$", ev["content"]):
+      add(server, ev)
+    elif re.match(r"^!!loc add \S+ here$", ev["content"]):
+      addHere(server, ev)
+    elif re.match(r"^!!loc del \S+$", ev["content"]):
+      delete(server, ev)
+    elif re.match(r"^!!loc conv \S+$", ev["content"]):
+      conv(server, ev)
+    elif re.match(r"^!!loc ex$", ev["content"]):
+      getAllVoxel(server, ev)
+    elif re.match(r"^!!loc \S+$", ev["content"]):
+      get(server, ev)
+    elif re.match(r"^!!loc$", ev["content"]):
+      getAll(server, ev)
+    else:
+      server.tell(ev["sender"], CC('[LOC] ','b'), CC('输入无效，使用 !!loc help 查看帮助', 'c'))
 
 name = "LocationPlugin"
 listener = [

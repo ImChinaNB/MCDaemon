@@ -7,7 +7,7 @@ Server: create a server by passing Working Directory and Starting Command.
 e.g s = Server("/home/mc/fabric", "java -jar fabric-server.jar nogui")
 """
 from subprocess import Popen, PIPE, STDOUT
-import os, select, time, builtins, textapi, json, platform, io
+import os, select, time, builtins, utils, json, platform, io
 from logging import getLogger
 l = getLogger(__name__)
 
@@ -55,7 +55,7 @@ class Server:
     self.execute(cmd)
   def tell(self, player, *texts):
     if player == False:
-      l.info("向控制台的消息: %s", textapi.NC(*texts))
+      l.info("向控制台的消息: %s", utils.NC(*texts))
       return
     cmd = "/tellraw " + player + " ["
     for text in texts:
@@ -68,8 +68,8 @@ class Server:
     self.execute(cmd)
   def debug(self, *texts):
     if self.debugon:
-      l.debug(textapi.NC(*texts))
+      l.debug(utils.NC(*texts))
       f = list(texts)
-      f = [textapi.CC("[Daemon/Debug] ", "7")] + f
+      f = [utils.CC("[Daemon/Debug] ", "7")] + f
       for target in self.debugtargets:
         if target.lower() in self.playerlist_lower: self.tell(target, *f)

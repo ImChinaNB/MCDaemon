@@ -3,8 +3,8 @@ MCDaemonReloaded 自我控制插件
 用于挂机
 """
 from event import TRIGGER
-import json, config, re
-from textapi import CC
+import json, utils, re
+from utils import CC
 
 helpstr = """SelfControl 自我控制插件 帮助
 !!self help - 查看此帮助

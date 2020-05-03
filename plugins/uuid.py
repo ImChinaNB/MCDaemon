@@ -2,7 +2,7 @@
 MCDaemonReloaded 服务器 UUID 转换插件
 提供 UUID 与玩家名的转换。
 """
-import config
+import utils
 import uuid,json
 from event import TRIGGER
 cfg = {
@@ -18,14 +18,14 @@ class NULL_NAMESPACE:
 def loaded(ev, server, plugin):
   global cfg
   if ev["name"] == name:
-    cfg = config.loadConfig("uuid", cfg)
+    cfg = utils.loadData("uuid", cfg)
     cfg["offline"] = server.offline_login
     if "usercache" not in cfg or cfg["usercache"] == "": cfg["usercache"] = server.cfg["asd"] + "/usercache.json"
 
 def unloading(ev, server, plugin):
   global cfg
   if ev["name"] == name:
-    config.saveConfig("uuid", cfg)
+    utils.saveData("uuid", cfg)
 
 def uuidfromapi(name):
   global cfg

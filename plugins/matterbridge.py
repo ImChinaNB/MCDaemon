@@ -3,12 +3,12 @@ MCDaemonReloaded 服务器 MatterBridge 插件
 提供简单的 MatterBridge 消息同步。
 需要 requests 库！
 """
-import config, requests, json, sys, time
+import utils, requests, json, sys, time
 from event import TRIGGER
-from textapi import CC
+from utils import CC
 from logging import getLogger, Logger, WARNING
 l = getLogger(__name__)
-cfg = config.loadConfig("matterbridge", {"enabled": False, "remote": "", "token": ""})
+cfg = utils.loadConfig("matterbridge", {"enabled": False, "remote": "", "token": ""})
 def stopped(ev,server,plugin):
   sendadmin("服务器停止了。")
 def stopping(ev,server,plugin):
@@ -31,6 +31,7 @@ def tracker(server,plugin,header,remote):
         for i in r.json():
           text = i
           if "event" not in text or text["event"] != "": continue
+          l.debug("gateway %s sent message %s, sender %s", text["gateway"], text["text"],text["username"])
           if text["gateway"] == "discord-minecraft":
             try:
               server.say(CC("[Discord] ", "b"), CC("<" + text["username"] + "> ", "7"), CC(text["text"], "f"))
@@ -64,20 +65,18 @@ def tracker(server,plugin,header,remote):
     except SystemExit:
       return
     except:
-      l.error("MatterBridge 无法从服务器获取信息。")
+      l.warning("MatterBridge 无法从服务器获取信息。")
       # __import__("traceback").print_exc(file=sys.stdout)
       time.sleep(30)
 def loaded(ev, server, plugin):
   global cfg
   if ev["name"] == name:
-    cfg = config.loadConfig("matterbridge", {"enabled": False, "remote": "", "token": ""})
+    cfg = utils.loadConfig("matterbridge", {"enabled": False, "remote": "", "token": ""})
     if cfg["enabled"]:
       pass
       plugin.asyncRun(name, tracker, {'Authorization': 'Bearer ' + cfg["token"]}, cfg["remote"])
 def unloading(ev, server, plugin):
   global cfg
-  if ev["name"] == name:
-    config.saveConfig("matterbridge", cfg)
 def message(ev, server, plugin):
   try:
     global cfg

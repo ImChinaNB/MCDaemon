@@ -7,10 +7,11 @@ event: Event class for plugins.
 Can listen to and undo at any time.
 """
 from enum import Enum
-import threading, builtins
-from textapi import CC
+import threading, traceback, logging
+from utils import CC
 
-count = 16
+l = logging.getLogger(__name__)
+count = 17
 class TRIGGER(Enum): # triggers enumerations
   SERVER_STOPPED = 0
   SERVER_STARTED = 1
@@ -28,6 +29,7 @@ class TRIGGER(Enum): # triggers enumerations
   PLAYER_COMMAND_ALL = 13
   PLAYER_INFO_ALL = 14
   CONSOLE_INPUT = 15
+  PLAYER_DEATH = 16
 
 class Event:
   def __init__(self):
@@ -60,4 +62,9 @@ class Event:
       else: asyncrun = True
     for func in self.fs[trigger.value].items():
       if asyncrun: self._asyncRun(func[1], (eventinfo, self.server, self.plugin))
-      else: func[1](eventinfo, self.server, self.plugin)
+      else:
+        try:
+          func[1](eventinfo, self.server, self.plugin)
+        except:
+          traceback.print_exc()
+          l.warning("事件 %s 触发 %s 时产生了异常！检查插件代码。", trigger, func[1])

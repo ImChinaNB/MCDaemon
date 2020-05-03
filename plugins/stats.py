@@ -2,7 +2,7 @@
 
 import json, os, time
 import urllib.request, urllib.error, urllib.parse
-from textapi import CC
+from utils import CC
 
 name = 'StatsPlugin'
 ScoreboardName = 'stats'

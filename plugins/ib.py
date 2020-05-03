@@ -3,15 +3,16 @@ MCDaemonReloaded 服务器 增量备份插件 (Increasing Backup)
 提供多个槽位的增量备份与回档功能。
 要求 rdiff-backup.
 """
-import config, uuid, json, os, time, shlex, datetime
+import utils, uuid, json, os, time, shlex, datetime, schedule
 from pathlib import Path
 from event import TRIGGER
 from subprocess import Popen
-from textapi import CC
+from utils import CC
 from logging import getLogger
 l = getLogger(__name__)
 
-cfg = config.loadConfig("backup", {"world": "", "slot": "16", "backupdir": "/backup", "backupwhenrollback": True, "logfile": "rdiff.log", "backups": []})
+cfg = utils.loadConfig("backup", {"world": "", "slot": "16", "backupdir": "/backup", "backupwhenrollback": True, "logfile": "rdiff.log"})
+data = utils.loadData("backup", {"backups": []})
 aborted = False
 confirmed = False
 inProgress = False
@@ -19,7 +20,7 @@ savedGame = False
 dest = None
 
 def syncBackupList():
-  global cfg
+  global cfg, data
   fl = []
   tf = {}
   newest = None
@@ -27,7 +28,7 @@ def syncBackupList():
   newesttimee = -1
   havelatest = False
   havelatestdescription = False
-  for bk in cfg["backups"]:
+  for bk in data["backups"]:
     if bk["file"]: tf[bk["file"]] = bk["description"]
     elif bk["file"] == False:
       havelatest = True
@@ -43,31 +44,32 @@ def syncBackupList():
   if havelatest and newest != None and newesttimee == newesttime: fl.append({"file": newest, "description": havelatestdescription, "time": newesttime})
   if havelatest and newest == None: fl.append({"file": False, "description": havelatestdescription, "time": int(datetime.datetime.now().timestamp())})
   fl.sort(key=lambda x: x['time'], reverse=True)
-  cfg["backups"] = fl
+  data["backups"] = fl
 def runCmd(cmd):
   t = Popen(shlex.split(cmd))
   t.wait()
   return t.returncode
 
 def doBackup(description, removeOld = True):
-  global cfg
+  global cfg, data
   if runCmd("rdiff-backup " + cfg["world"] + " " + cfg["backupdir"]) == 0: # rdiff-backup /home/mc/fabric/world* /backup/
     if removeOld: runCmd("rdiff-backup --force --remove-older-than " + cfg["slot"] + "B " + cfg["backupdir"])
     syncBackupList()
-    cfg['backups'].append({'file': False, 'description': description, 'time':0})
+    data['backups'].append({'file': False, 'description': description, 'time':0})
     syncBackupList()
     return True
   else:
     syncBackupList()
     return False
 def doRestore(filen):
-  global cfg
+  global cfg, data
   # rdiff-backup host.net::/remote-dir/rdiff-backup-data/increments/file.2003-03-05T12:21:41-07:00.diff.gz local-dir/file
   if filen == False or Path(cfg['backupdir'] + '/rdiff-backup-data/' + filen).is_file():
     l.info("备份原存档...")
     if cfg["backupwhenrollback"]:
       if doBackup("回档前自动备份", False) and filen == False:
-        filen = cfg['backups'][0]['file']
+        filen = data['backups'][1]['file']
+    l.info('备份完以后，回档目标为：%s', filen)
     l.info("开始回档...")
     if filen: ojbk = cfg['backupdir'] + '/rdiff-backup-data/' + filen
     else: ojbk = "-r now " + cfg['backupdir']
@@ -101,21 +103,29 @@ def makeBackup(server, description = ""):
   server.execute("save-on")
   savedGame = False
   inProgress = False
+def timedBackup(server):
+  l.log("现在是凌晨了。开始备份...")
+  makeBackup(server, "凌晨自动备份")
+def timedSch(server, plugin):
+  schedule.every().day.at("01:00").do(timedBackup, server)
+  while True:
+    schedule.run_pending()
+    time.sleep(10)
 def makeRestore(server, slot,plugin):
-  global inProgress, savedGame, cfg, confirmed, dest, aborted
+  global inProgress, savedGame, cfg, data, confirmed, dest, aborted
   if inProgress:
     server.say(CC("[IB] ","a"), CC("已经在进行备份或回档，请勿重复操作！", "cl"))
     return
   try:
     idd = int(slot)
-    if cfg['backups'][idd]['file'] != '':
+    if data['backups'][idd]['file'] != '':
       inProgress = True
-      server.say(CC("[IB] ","a"), CC("将要回档到 <", "e"), CC(cfg['backups'][idd]['description'], 'f'), CC('> ', 'e'), CC(cfg['backups'][idd]['file'], 'f'), CC('，是否继续？在 20 秒内输入 !!ib confirm 确认操作。', 'e'))
+      server.say(CC("[IB] ","a"), CC("将要回档到 <", "e"), CC(data['backups'][idd]['description'], 'f'), CC('> ', 'e'), CC(data['backups'][idd]['file'], 'f'), CC('，是否继续？在 20 秒内输入 !!ib confirm 确认操作。', 'e'))
   except:
     server.say(CC("[IB] ","a"), CC("输入的槽位有误！请检查。", "c"))
     return
   confirmed = False
-  dest = cfg['backups'][int(slot)]['file']
+  dest = data['backups'][int(slot)]['file']
   for i in range(2000):
     time.sleep(0.01)
     if confirmed: break
@@ -164,7 +174,7 @@ def onstopped(ev,server,plugin):
     inProgress = False
 
 def printhelp(server):
-  global cfg, inProgress
+  global cfg, data, inProgress
   if not inProgress:
     for t in """Increasing Backup 帮助
 !!ib help - 查看此帮助
@@ -175,19 +185,19 @@ def printhelp(server):
 !!ib confirm/abort 确认/取消 回档操作。""".split("\n"): server.say(CC(t,"e"))
 
 def makeView(server):
-  global cfg, inProgress
+  global cfg, data, inProgress
   if not inProgress:
     server.say(CC("[IB] ","a"), CC("下面为所有的备份：(ID/说明)", "e"))
-    for i,j in enumerate(cfg["backups"]):
+    for i,j in enumerate(data["backups"]):
       server.say(CC(str(i), "d"), CC(" / ", "f"), CC("无说明" if j["description"].strip()=="" else j["description"], "e"), CC(" / ", "f"), CC(datetime.datetime.fromtimestamp(int(j["time"])).strftime('%Y.%m.%d %H:%M:%S')))
 def refreshView(server):
-  global cfg, inProgress
+  global cfg, data, inProgress
   if not inProgress:
     syncBackupList()
     server.say(CC("[IB] ","a"), CC("刷新完毕。", "e"))
 
 def makeConfirm(server, user):
-  if user not in ["ImSingularity", "2233Cheers", "ImLinDun", False]:
+  if user not in ["ImSingularity", "2233Cheers", "ImLinDun", "Herbst_Q", "AFallLeaf", False]:
     server.tell(user, CC("[IB] ","a"), CC("你没有确认回档的权限。", "c"))
   else:
     global confirmed, dest
@@ -223,11 +233,18 @@ def oninfo(ev, server,plugin):
   if ev["content"].startswith('Saved the game') and inProgress:
     savedGame = True
 def onunload(ev,server,plugin):
-  config.saveConfig("backup", cfg)
+  if ev["name"] == name:
+    utils.saveData("backup", data)
+  
+def onload(ev,server,plugin):
+  if ev["name"] == name:
+    plugin.asyncRun(name, timedSch)
+  
 listener = [
   {"type": TRIGGER.SERVER_STOPPED, "func": onstopped},
   {"type": TRIGGER.PLAYER_INFO, "func": oncmd},
   {"type": TRIGGER.SERVER_INFO, "func": oninfo},
-  {"type": TRIGGER.PLUGIN_UNLOADING, "func": onunload}
+  {"type": TRIGGER.PLUGIN_UNLOADING, "func": onunload},
+  {"type": TRIGGER.PLUGIN_LOADED, "func": onload}
 ]
 name = "BackupPlugin"

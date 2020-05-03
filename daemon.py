@@ -4,7 +4,7 @@ This is the main file of MCDaemonReloaded.
 Written by ChinaNB, GPL 3.0 License.
 """
 import json, os, sys, threading, logging, logger
-from config import loadConfig
+from utils import loadConfig
 """
 import atexit, readline
 
@@ -75,7 +75,9 @@ def isverbose(s):
 def tickDaemon(server,handler,plugin):
   while True:
     try:
-      if not hasattr(server, "iter"): pass
+      if not hasattr(server, "iter") or server.iter is None:
+        time.sleep(0.5)
+        pass
       lines = server.iter.readlines()
       for line in lines:
         if line.rstrip("\n") != "" and not isverbose(line.rstrip("\n").strip()):
@@ -100,39 +102,41 @@ def tickDaemon(server,handler,plugin):
 logging.basicConfig(filename='mcd.log', filemode='a')
 l = logging.getLogger("daemon")
 
-l.info("程序启动。")
-## read config
-cfg = loadConfig("daemon", False)
-if not isinstance(cfg, dict):
-  l.critical("无法读取配置文件。")
-  os._exit(1)
+if __name__ == "__main__":
 
-l.info("配置文件加载完毕。")
+  l.info("程序启动。")
+  ## read cfg
+  cfg = loadConfig("daemon", False)
+  if not isinstance(cfg, dict):
+    l.critical("无法读取配置文件。")
+    os._exit(1)
 
-stopserver = False
-mainthread = None
-server = Server(cfg)
-event = Event()
-plugin = Plugin(server, event)
-event.setParm(server, plugin)
-handler = Handler(server, event)
-l.info("基础类初始化完毕。")
-try:
-  l.info("各线程启动中...")
-  asyncRun(getInput, (server,event,plugin))
+  l.info("配置文件加载完毕。")
+
+  stopserver = False
   mainthread = None
-  asyncRunNoDaemon(trackstatus, (handler,server,plugin))
-  l.info("各线程启动完毕。")
-  l.info("插件初始化...")
-  loadPlugins(plugin)
-  l.info("插件初始化完毕。")
-  l.info("启动后台服务器...")
-  server.start()
-  l.info("启动服务器处理线程...")
-  asyncRun(tickDaemon, (server,handler,plugin))
-  l.info("MCDR 初始化完毕。")
-except Exception:
-  l.error("无法初始化 MCDR。正在尝试停止服务器... 输入 halt 退出程序。")
+  server = Server(cfg)
+  event = Event()
+  plugin = Plugin(server, event)
+  event.setParm(server, plugin)
+  handler = Handler(server, event)
+  l.info("基础类初始化完毕。")
   try:
-    server.stop()
-  except: pass
+    l.info("各线程启动中...")
+    asyncRun(getInput, (server,event,plugin))
+    mainthread = None
+    asyncRunNoDaemon(trackstatus, (handler,server,plugin))
+    l.info("各线程启动完毕。")
+    l.info("插件初始化...")
+    loadPlugins(plugin)
+    l.info("插件初始化完毕。")
+    l.info("启动后台服务器...")
+    server.start()
+    l.info("启动服务器处理线程...")
+    asyncRun(tickDaemon, (server,handler,plugin))
+    l.info("MCDR 初始化完毕。")
+  except Exception:
+    l.error("无法初始化 MCDR。正在尝试停止服务器... 输入 halt 退出程序。")
+    try:
+      server.stop()
+    except: pass

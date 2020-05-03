@@ -4,7 +4,7 @@ MCDaemonReloaded 玩家位置 插件
 """
 from plugins.playerinfo import getPlayerInfo
 from event import TRIGGER
-from textapi import CC
+from utils import CC
 def mixhover(text,x,y,z):
   return {**text, **{'hoverEvent': {'action': 'show_text', 'value': u'§a[' + str(x) + u', ' + str(y) + u', ' + str(z) + u']§r'}}}
 def getpos(x,y,z,dim):

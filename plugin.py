@@ -11,7 +11,7 @@ import uuid
 import sys
 from event import TRIGGER
 from pathlib import Path
-from textapi import CC
+from utils import CC
 import threading
 import ctypes, inspect, logging
 import time
@@ -44,6 +44,7 @@ class stoppable_thread(threading.Thread):
     except SystemExit:
       l.info("Thread from %s has been terminated.", self.source)
     except:
+      __import__("traceback").print_exc()
       l.warning("Thread from %s has ended of uncaught exception.", self.source)
   def start(self): 
     self.__run_backup = self.run 
@@ -83,6 +84,7 @@ class Plugin:
     self.id = 0
   def asyncRun(self, source, func, *args):
     if self.reloading: return False
+    l.info("来源 %s 启动线程 %s", source,func)
     t = stoppable_thread(source,self.server,self,func,*args)
     t.start()
     if t.is_alive(): self.threads.append(t)
@@ -139,7 +141,7 @@ class Plugin:
     stage = 0
     try:
       self.server.debug(CC("加载插件中: "), CC(pluginPath, "el"))
-      spec = importlib.util.spec_from_file_location(pluginPath.replace("plugin/","").replace("plugin\\",""), pluginPath)
+      spec = importlib.util.spec_from_file_location("p_" + pluginPath.replace("plugins/","").replace(".py","").replace("plugins\\",""), pluginPath)
       self.plugs.append({"plugin": importlib.util.module_from_spec(spec)})
       stage = 1
       spec.loader.exec_module(self.plugs[-1]["plugin"])

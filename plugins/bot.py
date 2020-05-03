@@ -3,9 +3,9 @@ MCDaemonReloaded 机器人插件
 召唤并控制 carpet 假人
 """
 from event import TRIGGER
-import json, config, re, datetime
-from textapi import CC
-
+import json, utils, re, datetime, time, logging
+from utils import CC
+l = logging.getLogger(__name__)
 botlist=[]
 trylist=[]
 botlog=[]
@@ -43,12 +43,10 @@ turn back/left/right: 让机器人转头
 def onload(ev,server,plugin):
   if ev["name"] == name:
     global botlist,loclist,botlog
-    botlist = config.loadConfig("bot", [])
-    if isinstance(botlist,dict):
-      loclist = botlist["loc"]
-      if "log" in botlist: botlog = botlist["log"]
-      botlist = botlist["bot"]
-    if botlist == {}: botlist = []
+    data = utils.loadData("bot", {"bot": [], "log": [], "loc": []})
+    loclist = data["loc"]
+    botlist = data["bot"]
+    botlog = data["log"]
     rem = []
     if len(botlog) > 0 and len(botlog[0]) != 4: botlog = []
     for i in botlist:
@@ -58,7 +56,7 @@ def onload(ev,server,plugin):
     for i in rem: botlist.remove(i)
 def onunload(ev,server,plugin):
   if ev["name"] == name:
-    config.saveConfig("bot", {"bot":botlist,"loc":loclist,"log":botlog})
+    utils.saveData("bot", {"bot":botlist,"loc":loclist,"log":botlog})
 def storepos(server, bot, plugin):
   pos = plugin.getplugin("PlayerInfoAPI").getPlayerInfo(server,bot[1], "Pos")
   dim = plugin.getplugin("PlayerInfoAPI").getPlayerInfo(server,bot[1], "Dimension")
@@ -73,13 +71,19 @@ def onjoin(ev,server,plugin):
     if ev["sender"].lower()==bot[1].lower():
       global botlog
       botlog.append([1, bot[0], bot[1], datetime.datetime.now().timestamp()])
+      if len(botlog) > 30: botlog = botlog[len(botlog) - 30:]
       server.say(CC("[BOT] ", "d"), CC(bot[0], "f"), CC(" 召唤了机器人 ", "e"), CC(bot[1], "6"), CC(" 注释 ", "e"), CC(bot[2], "6"))
       rem.append(bot)
+      tt = bot[3]
+      bot[3] = True
       botlist.append(bot)
       server.execute("gamemode 0 " + bot[1])
-      if bot[3]: server.execute("tp " + bot[1] + " " + bot[0])
+      if tt: server.execute("tp " + bot[1] + " " + bot[0])
       elif bot[1] in loclist:
         lc = loclist[bot[1]]
+        server.execute("execute in {0} run tp {1} {2} {3} {4} {5} {6}".format(["the_nether","overworld","the_end"][lc[3]+1],bot[1],lc[0],lc[1],lc[2],123,45))
+        time.sleep(1)
+        l.debug("execute in {0} run tp {1} {2} {3} {4} {5} {6}".format(["the_nether","overworld","the_end"][lc[3]+1],bot[1],lc[0],lc[1],lc[2],lc[4],lc[5]))
         server.execute("execute in {0} run tp {1} {2} {3} {4} {5} {6}".format(["the_nether","overworld","the_end"][lc[3]+1],bot[1],lc[0],lc[1],lc[2],lc[4],lc[5]))
   for bot in rem: trylist.remove(bot)
 
@@ -126,6 +130,7 @@ def kick_bot(server, sender, name,plugin):
       storepos(server,bot,plugin)
       global botlog
       botlog.append([0, sender, bot[1], datetime.datetime.now().timestamp()])
+      if len(botlog) > 30: botlog = botlog[len(botlog) - 30:]
       server.execute("/player "+bot[1]+" kill")
       return
   server.tell(sender, CC("[BOT] ", "d"), CC("不存在该bot！", "c"))
@@ -164,6 +169,7 @@ def kickall_bot(server, sender,plugin):
     storepos(server,bot,plugin)
     global botlog
     botlog.append([0, sender, bot[1], datetime.datetime.now().timestamp()])
+    if len(botlog) > 30: botlog = botlog[len(botlog) - 30:]
     server.execute("/player "+bot[1]+" kill")
 def tp_bot(server,sender,name):
   global botlist
@@ -224,23 +230,23 @@ def oninfo(ev,server,plugin):
     for i in helpstr.split("\n"): server.tell(ev["sender"], CC(i, "e"))
   else:
 
-    if re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"]):
-      m = re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{3,16}) (\S+)$", ev["content"])
+    if re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{1,16}) (\S+)$", ev["content"]):
+      m = re.match(r"^!!bot add (-notp |)([0-9A-Za-z_]{1,16}) (\S+)$", ev["content"])
       if m.group(1) != "": add_bot(server, ev["sender"], m.group(2), m.group(3), False)
       else: add_bot(server, ev["sender"], m.group(2), m.group(3))
-    elif re.match(r"^!!bot save ([0-9A-Za-z_]{3,16})$", ev["content"]):
-      save_bot(server, ev["sender"], re.match(r"^!!bot save ([0-9A-Za-z_]{3,16})$", ev["content"]).group(1),plugin)
-    elif re.match(r"^!!bot gm ([0-9A-Za-z_]{3,16}) (c|s|sp)$", ev["content"]):
-      r = re.match(r"^!!bot gm ([0-9A-Za-z_]{3,16}) (c|s|sp)$", ev["content"])
+    elif re.match(r"^!!bot save ([0-9A-Za-z_]{1,16})$", ev["content"]):
+      save_bot(server, ev["sender"], re.match(r"^!!bot save ([0-9A-Za-z_]{1,16})$", ev["content"]).group(1),plugin)
+    elif re.match(r"^!!bot gm ([0-9A-Za-z_]{1,16}) (c|s|sp)$", ev["content"]):
+      r = re.match(r"^!!bot gm ([0-9A-Za-z_]{1,16}) (c|s|sp)$", ev["content"])
       gm_bot(server, ev["sender"], r.group(1), r.group(2), plugin)
-    elif re.match(r"^!!bot kick ([0-9A-Za-z_]{3,16})$", ev["content"]):
-      kick_bot(server, ev["sender"], re.match(r"^!!bot kick ([0-9A-Za-z_]{3,16})$", ev["content"]).group(1),plugin)
+    elif re.match(r"^!!bot kick ([0-9A-Za-z_]{1,16})$", ev["content"]):
+      kick_bot(server, ev["sender"], re.match(r"^!!bot kick ([0-9A-Za-z_]{1,16})$", ev["content"]).group(1),plugin)
     elif re.match(r"^!!bot kickall$", ev["content"]):
       kickall_bot(server, ev["sender"],plugin)
-    elif re.match(r"^!!bot tp ([0-9A-Za-z_]{3,16})$", ev["content"]):
-      tp_bot(server, ev["sender"], re.match(r"^!!bot tp ([0-9A-Za-z_]{3,16})$", ev["content"]).group(1))
-    elif re.match(r"^!!bot tppos ([0-9A-Za-z_]{3,16}) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) (|overworld|the_end|the_nether)$", ev["content"]):
-      m = re.match(r"^!!bot tppos ([0-9A-Za-z_]{3,16}) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) (|overworld|the_end|the_nether)$", ev["content"])
+    elif re.match(r"^!!bot tp ([0-9A-Za-z_]{1,16})$", ev["content"]):
+      tp_bot(server, ev["sender"], re.match(r"^!!bot tp ([0-9A-Za-z_]{1,16})$", ev["content"]).group(1))
+    elif re.match(r"^!!bot tppos ([0-9A-Za-z_]{1,16}) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) (|overworld|the_end|the_nether)$", ev["content"]):
+      m = re.match(r"^!!bot tppos ([0-9A-Za-z_]{1,16}) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) ((?:-?[0-9](?:\.[0-9]+)?)+) (|overworld|the_end|the_nether)$", ev["content"])
       tppos_bot(server, ev["sender"], m.group(1), m.group(2),m.group(3),m.group(4),m.group(5) if m.group(5)!="" else "overworld")
     elif re.match(r"^!!bot actionlist$", ev["content"]):
       for i in actionstr.split("\n"): server.tell(ev["sender"], CC(i, "e"))
@@ -248,23 +254,23 @@ def oninfo(ev,server,plugin):
       view_bot(server,ev["sender"])
     elif re.match(r"^!!bot log$", ev["content"]):
       log_bot(server,ev["sender"])
-    elif re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (attack|swapHands|use|jump) (every [0-9]+|once|keep)$", ev["content"]):
-      m = re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (attack|swapHands|use|jump) (every [0-9]+|once|keep)$", ev["content"])
+    elif re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (attack|swapHands|use|jump) (every [0-9]+|once|keep)$", ev["content"]):
+      m = re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (attack|swapHands|use|jump) (every [0-9]+|once|keep)$", ev["content"])
       if check_bot(server, ev["sender"], m.group(1)): act_bot(server, ev["sender"], m.group(1), m.group(2), m.group(3))
-    elif re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (drop|dropStack) (all|mainhand|offhand|every [0-9]+|once|keep)$", ev["content"]):
-      m = re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (drop|dropStack) (all|mainhand|offhand|every [0-9]+|once|keep)$", ev["content"])
+    elif re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (drop|dropStack) (all|mainhand|offhand|every [0-9]+|once|keep)$", ev["content"]):
+      m = re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (drop|dropStack) (all|mainhand|offhand|every [0-9]+|once|keep)$", ev["content"])
       if check_bot(server, ev["sender"], m.group(1)): act_bot(server, ev["sender"], m.group(1), m.group(2), m.group(3))
-    elif re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (sprint|sneak|unsneak|unsprint|stop|mount|dismount)$", ev["content"]):
-      m = re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (sprint|sneak|unsneak|unsprint|stop|mount|dismount)$", ev["content"])
+    elif re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (sprint|sneak|unsneak|unsprint|stop|mount|dismount)$", ev["content"]):
+      m = re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (sprint|sneak|unsneak|unsprint|stop|mount|dismount)$", ev["content"])
       if check_bot(server, ev["sender"], m.group(1)): act2_bot(server, ev["sender"], m.group(1), m.group(2))
-    elif re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (look) (east|west|south|north|up|down)$", ev["content"]):
-      m = re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (look) (east|west|south|north|up|down)$", ev["content"])
+    elif re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (look) (east|west|south|north|up|down)$", ev["content"]):
+      m = re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (look) (east|west|south|north|up|down)$", ev["content"])
       if check_bot(server, ev["sender"], m.group(1)): act_bot(server, ev["sender"], m.group(1), m.group(2), m.group(3))
-    elif re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (move) (forward|backward|left|right)$", ev["content"]):
-      m = re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (move) (forward|backward|left|right)$", ev["content"])
+    elif re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (move) (forward|backward|left|right)$", ev["content"]):
+      m = re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (move) (forward|backward|left|right)$", ev["content"])
       if check_bot(server, ev["sender"], m.group(1)): act_bot(server, ev["sender"], m.group(1), m.group(2), m.group(3))
-    elif re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (turn) (back|left|right)$", ev["content"]):
-      m = re.match(r"^!!bot action ([0-9A-Za-z_]{3,16}) (turn) (back|left|right)$", ev["content"])
+    elif re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (turn) (back|left|right)$", ev["content"]):
+      m = re.match(r"^!!bot action ([0-9A-Za-z_]{1,16}) (turn) (back|left|right)$", ev["content"])
       if check_bot(server, ev["sender"], m.group(1)): act_bot(server, ev["sender"], m.group(1), m.group(2), m.group(3))
     else:
       server.tell(ev["sender"], CC("[BOT] ","d"), CC("不存在该指令或参数不合法。请检查输入！", "c"))
