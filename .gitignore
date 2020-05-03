@@ -147,6 +147,8 @@ static
 
 # config stuff
 config/
+config3/
+config3/*
 data/
 data/*
 config/*
